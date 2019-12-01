@@ -958,7 +958,7 @@ namespace System.IO.Compression
                         }
                     }
 
-                    // Now, use the source stream's CopyToAsync to push directly to our inflater via this helper stream
+                    // Now, use the source stream's CopyTo to push directly to our inflater via this helper stream
                     _deflateStream._stream.CopyTo(this, _arrayPoolBuffer.Length);
                 }
                 finally
@@ -1032,6 +1032,201 @@ namespace System.IO.Compression
                     if (bytesRead > 0)
                     {
                         _destination.Write(_arrayPoolBuffer, 0, bytesRead);
+                    }
+                    else if (_deflateStream._inflater.NeedsInput())
+                    {
+                        // only break if we read 0 and ran out of input, if input is still available it may be another GZip payload
+                        break;
+                    }
+                }
+            }
+
+            public override bool CanWrite => true;
+            public override void Flush() { }
+            public override bool CanRead => false;
+            public override bool CanSeek => false;
+            public override long Length { get { throw new NotSupportedException(); } }
+            public override long Position { get { throw new NotSupportedException(); } set { throw new NotSupportedException(); } }
+            public override int Read(byte[] buffer, int offset, int count) { throw new NotSupportedException(); }
+            public override long Seek(long offset, SeekOrigin origin) { throw new NotSupportedException(); }
+            public override void SetLength(long value) { throw new NotSupportedException(); }
+        }
+
+        public override void CopyTo(ReadOnlySpanAction<byte, object?> callback, object? state, int bufferSize)
+        {
+            StreamHelpers.ValidateCopyToArgs(this, callback, bufferSize);
+
+            EnsureDecompressionMode();
+            EnsureNotDisposed();
+
+            new CopyToSpan(this, callback, state, bufferSize).CopyFromSourceToCallback();
+        }
+
+        public override Task CopyToAsync(Func<ReadOnlyMemory<byte>, object?, CancellationToken, ValueTask> callback, object? state, int bufferSize, CancellationToken cancellationToken)
+        {
+            // Validation as base CopyToAsync would do
+            StreamHelpers.ValidateCopyToArgs(this, callback, bufferSize);
+
+            // Validation as ReadAsync would do
+            EnsureDecompressionMode();
+            EnsureNoActiveAsyncOperation();
+            EnsureNotDisposed();
+
+            // Early check for cancellation
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return Task.FromCanceled<int>(cancellationToken);
+            }
+
+            // Do the copy
+            return new CopyToSpan(this, callback, state, bufferSize, cancellationToken).CopyFromSourceToCallbackAsync();
+        }
+
+        private sealed class CopyToSpan : Stream
+        {
+            private readonly DeflateStream _deflateStream;
+            private readonly Delegate _callback;
+            private readonly object? _state;
+            private readonly CancellationToken _cancellationToken;
+            private byte[] _arrayPoolBuffer;
+
+            public CopyToSpan(DeflateStream deflateStream, Delegate callback, object? state, int bufferSize) :
+                this(deflateStream, callback, state, bufferSize, CancellationToken.None)
+            {
+            }
+
+            public CopyToSpan(DeflateStream deflateStream, Delegate callback, object? state, int bufferSize, CancellationToken cancellationToken)
+            {
+                Debug.Assert(deflateStream != null);
+                Debug.Assert(callback != null);
+                Debug.Assert(bufferSize > 0);
+
+                _deflateStream = deflateStream;
+                _callback = callback;
+                _state = state;
+                _cancellationToken = cancellationToken;
+                _arrayPoolBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+            }
+
+            public async Task CopyFromSourceToCallbackAsync()
+            {
+                _deflateStream.AsyncOperationStarting();
+                try
+                {
+                    await WriteCoreAsync().ConfigureAwait(false);
+
+                    // Now, use the source stream's CopyToAsync to push directly to our inflater via this helper stream
+                    await _deflateStream._stream
+                        .CopyToAsync((memory, state, cancellationToken) =>
+                            ((CopyToSpan)state!).WriteAsync(memory, cancellationToken),
+                            this, _arrayPoolBuffer.Length, _cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                finally
+                {
+                    _deflateStream.AsyncOperationCompleting();
+
+                    ArrayPool<byte>.Shared.Return(_arrayPoolBuffer);
+                    _arrayPoolBuffer = null!;
+                }
+            }
+
+            public void CopyFromSourceToCallback()
+            {
+                try
+                {
+                    WriteCore();
+
+                    // Now, use the source stream's CopyTo to push directly to our inflater via this helper stream
+                    _deflateStream._stream.CopyTo((span, state) => ((CopyToSpan)state!).Write(span), this, _arrayPoolBuffer.Length);
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(_arrayPoolBuffer);
+                    _arrayPoolBuffer = null!;
+                }
+            }
+
+            public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            {
+                // Validate inputs
+                Debug.Assert(buffer != _arrayPoolBuffer);
+                _deflateStream.EnsureNotDisposed();
+                if (count <= 0)
+                {
+                    return;
+                }
+                else if (count > buffer.Length - offset)
+                {
+                    // The buffer stream is either malicious or poorly implemented and returned a number of
+                    // bytes larger than the buffer supplied to it.
+                    throw new InvalidDataException(SR.GenericInvalidData);
+                }
+
+                Debug.Assert(_deflateStream._inflater != null);
+                // Feed the data from base stream into the decompression engine.
+                _deflateStream._inflater.SetInput(buffer, offset, count);
+
+                await WriteCoreAsync().ConfigureAwait(false);
+            }
+
+            public override void Write(byte[] buffer, int offset, int count)
+            {
+                // Validate inputs
+                Debug.Assert(buffer != _arrayPoolBuffer);
+                _deflateStream.EnsureNotDisposed();
+
+                if (count <= 0)
+                {
+                    return;
+                }
+                else if (count > buffer.Length - offset)
+                {
+                    // The buffer stream is either malicious or poorly implemented and returned a number of
+                    // bytes larger than the buffer supplied to it.
+                    throw new InvalidDataException(SR.GenericInvalidData);
+                }
+
+                Debug.Assert(_deflateStream._inflater != null);
+                // Feed the data from base stream into the decompression engine.
+                _deflateStream._inflater.SetInput(buffer, offset, count);
+
+                WriteCore();
+            }
+
+            private async Task WriteCoreAsync()
+            {
+                Debug.Assert(_deflateStream._inflater != null);
+                // While there's more decompressed data available, forward it to the callback.
+                while (!_deflateStream._inflater.Finished())
+                {
+                    int bytesRead = _deflateStream._inflater.Inflate(new Span<byte>(_arrayPoolBuffer));
+                    if (bytesRead > 0)
+                    {
+                        var callback = (Func<ReadOnlyMemory<byte>, object?, CancellationToken, ValueTask>)_callback!;
+                        var memory = new ReadOnlyMemory<byte>(_arrayPoolBuffer, 0, bytesRead);
+                        await callback(memory, _state, _cancellationToken).ConfigureAwait(false);
+                    }
+                    else if (_deflateStream._inflater.NeedsInput())
+                    {
+                        // only break if we read 0 and ran out of input, if input is still available it may be another GZip payload
+                        break;
+                    }
+                }
+            }
+
+            private void WriteCore()
+            {
+                Debug.Assert(_deflateStream._inflater != null);
+                // While there's more decompressed data available, forward it to the callback.
+                while (!_deflateStream._inflater.Finished())
+                {
+                    int bytesRead = _deflateStream._inflater.Inflate(new Span<byte>(_arrayPoolBuffer));
+                    if (bytesRead > 0)
+                    {
+                        var callback = (ReadOnlySpanAction<byte, object?>)_callback!;
+                        var span = new ReadOnlySpan<byte>(_arrayPoolBuffer, 0, bytesRead);
+                        callback(span, _state);
                     }
                     else if (_deflateStream._inflater.NeedsInput())
                     {

@@ -130,19 +130,27 @@ namespace System.IO.Compression
         [InlineData(1000, TestScenario.ReadAsync, 1000, 1)]
         [InlineData(1000, TestScenario.Copy, 1000, 1)]
         [InlineData(1000, TestScenario.CopyAsync, 1000, 1)]
+        [InlineData(1000, TestScenario.CopySpan, 1000, 1)]
+        [InlineData(1000, TestScenario.CopySpanAsync, 1000, 1)]
         [InlineData(10, TestScenario.Read, 1000, 2000)]
         [InlineData(10, TestScenario.ReadByte, 0, 2000)]
         [InlineData(10, TestScenario.ReadAsync, 1000, 2000)]
         [InlineData(10, TestScenario.Copy, 1000, 2000)]
         [InlineData(10, TestScenario.CopyAsync, 1000, 2000)]
-        [InlineData(2, TestScenario.Copy, 1000, 0x2000-30)]
+        [InlineData(2, TestScenario.Copy, 1000, 0x2000 - 30)]
         [InlineData(2, TestScenario.CopyAsync, 1000, 0x2000 - 30)]
+        [InlineData(10, TestScenario.CopySpan, 1000, 2000)]
+        [InlineData(10, TestScenario.CopySpanAsync, 1000, 2000)]
+        [InlineData(2, TestScenario.CopySpan, 1000, 0x2000 - 30)]
+        [InlineData(2, TestScenario.CopySpanAsync, 1000, 0x2000 - 30)]
         [InlineData(1000, TestScenario.Read, 1, 1)]
         [InlineData(1000, TestScenario.ReadAsync, 1, 1)]
         [InlineData(1000, TestScenario.Read, 1001 * 24, 1)]
         [InlineData(1000, TestScenario.ReadAsync, 1001 * 24, 1)]
         [InlineData(1000, TestScenario.Copy, 1001 * 24, 1)]
         [InlineData(1000, TestScenario.CopyAsync, 1001 * 24, 1)]
+        [InlineData(1000, TestScenario.CopySpan, 1001 * 24, 1)]
+        [InlineData(1000, TestScenario.CopySpanAsync, 1001 * 24, 1)]
         public async Task ManyConcatenatedGzipStreams(int streamCount, TestScenario scenario, int bufferSize, int bytesPerStream)
         {
             await TestConcatenatedGzipStreams(streamCount, scenario, bufferSize, bytesPerStream);
@@ -154,6 +162,8 @@ namespace System.IO.Compression
         [InlineData(400000, TestScenario.ReadAsync, 1000, 1)]
         [InlineData(400000, TestScenario.Copy, 1000, 1)]
         [InlineData(400000, TestScenario.CopyAsync, 1000, 1)]
+        [InlineData(400000, TestScenario.CopySpan, 1000, 1)]
+        [InlineData(400000, TestScenario.CopySpanAsync, 1000, 1)]
         [InlineData(1000, TestScenario.Read, 1000, 20000)]
         [InlineData(1000, TestScenario.ReadByte, 0, 20000)]
         [InlineData(1000, TestScenario.ReadAsync, 1000, 9000)]
@@ -163,6 +173,8 @@ namespace System.IO.Compression
         [InlineData(1000, TestScenario.ReadAsync, 1001 * 24, 9000)]
         [InlineData(1000, TestScenario.Copy, 1001 * 24, 9000)]
         [InlineData(1000, TestScenario.CopyAsync, 1001 * 24, 9000)]
+        [InlineData(1000, TestScenario.CopySpan, 1001 * 24, 9000)]
+        [InlineData(1000, TestScenario.CopySpanAsync, 1001 * 24, 9000)]
         public async Task ManyManyConcatenatedGzipStreams(int streamCount, TestScenario scenario, int bufferSize, int bytesPerStream)
         {
             await TestConcatenatedGzipStreams(streamCount, scenario, bufferSize, bytesPerStream);
@@ -174,17 +186,20 @@ namespace System.IO.Compression
             Read,
             ReadAsync,
             Copy,
-            CopyAsync
+            CopyAsync,
+            CopySpan,
+            CopySpanAsync
         }
 
         private async Task TestConcatenatedGzipStreams(int streamCount, TestScenario scenario, int bufferSize, int bytesPerStream = 1)
         {
-            bool isCopy = scenario == TestScenario.Copy || scenario == TestScenario.CopyAsync;
+            bool isCopy = scenario == TestScenario.Copy || scenario == TestScenario.CopyAsync ||
+                        scenario == TestScenario.CopySpan || scenario == TestScenario.CopySpanAsync;
 
             using (MemoryStream correctDecompressedOutput = new MemoryStream())
             // For copy scenarios use a derived MemoryStream to avoid MemoryStream's Copy optimization 
             // that turns the Copy into a single Write passing the backing buffer
-            using (MemoryStream compressedStream = isCopy ? new DerivedMemoryStream() : new MemoryStream())  
+            using (MemoryStream compressedStream = isCopy ? new DerivedMemoryStream() : new MemoryStream())
             using (MemoryStream decompressorOutput = new MemoryStream())
             {
                 for (int i = 0; i < streamCount; i++)
@@ -249,6 +264,16 @@ namespace System.IO.Compression
                             break;
                         case TestScenario.CopyAsync:
                             await decompressor.CopyToAsync(decompressorOutput, bufferSize);
+                            finished = true;
+                            break;
+                        case TestScenario.CopySpan:
+                            decompressor.CopyTo((span, state) => ((MemoryStream)state!).Write(span), decompressorOutput, bufferSize);
+                            finished = true;
+                            break;
+                        case TestScenario.CopySpanAsync:
+                            await decompressor.CopyToAsync(
+                                (memory, state, _) => ((MemoryStream)state!).WriteAsync(memory),
+                                decompressorOutput, bufferSize, default(CancellationToken));
                             finished = true;
                             break;
                     }
