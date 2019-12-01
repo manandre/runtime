@@ -759,7 +759,7 @@ namespace System.Threading.Tasks.Dataflow
         }
         #endregion
 
-        #region TryReceive, ReceiveAsync, and Receive
+        #region TryReceive, ReceiveAsync, Receive and ReceiveAllAsync
         #region TryReceive
         /// <summary>
         /// Attempts to synchronously receive an item from the <see cref="System.Threading.Tasks.Dataflow.ISourceBlock{T}"/>.
@@ -1385,6 +1385,30 @@ namespace System.Threading.Tasks.Dataflow
             object IDebuggerDisplay.Content { get { return DebuggerDisplayContent; } }
         }
         #endregion
+
+        #region ReceiveAllAsync
+        /// <summary>Creates an <see cref="IAsyncEnumerable{T}"/> that enables receiving all of the data from the source.</summary>
+        /// <typeparam name="TOutput">Specifies the type of data contained in the source.</typeparam>
+        /// <param name="source">The source from which to asynchronously receive.</param>
+        /// <param name="cancellationToken">The <see cref="System.Threading.CancellationToken"/> which may be used to cancel the receive operation.</param>
+        /// <returns>The created async enumerable.</returns>
+        /// <exception cref="System.ArgumentNullException">The <paramref name="source"/> is null (Nothing in Visual Basic).</exception>
+        public static IAsyncEnumerable<TOutput> ReceiveAllAsync<TOutput>(this ISourceBlock<TOutput> source, CancellationToken cancellationToken = default)
+        {
+            // Validate arguments
+            if (source == null) throw new ArgumentNullException(nameof(source));
+
+            return source.ReceiveAllAsyncCore(cancellationToken);
+        }
+
+        private static async IAsyncEnumerable<TOutput> ReceiveAllAsyncCore<TOutput>(this ISourceBlock<TOutput> source, [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            while (await source.OutputAvailableAsync(cancellationToken).ConfigureAwait(false))
+            {
+                yield return await source.ReceiveAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
+        #endregion
         #endregion
 
         #region OutputAvailableAsync
@@ -1458,6 +1482,7 @@ namespace System.Threading.Tasks.Dataflow
                 // If cancellation could be requested, hook everything up to be notified of cancellation requests.
                 if (cancellationToken.CanBeCanceled)
                 {
+                    target.CancellationToken = cancellationToken;
                     // When cancellation is requested, unlink the target from the source and cancel the target.
                     target._ctr = cancellationToken.Register(OutputAvailableAsyncTarget<TOutput>.s_cancelAndUnlink, target);
                 }
@@ -1521,7 +1546,7 @@ namespace System.Threading.Tasks.Dataflow
                 System.Threading.Tasks.Task.Factory.StartNew(tgt =>
                                                             {
                                                                 var thisTarget = (OutputAvailableAsyncTarget<T>)tgt;
-                                                                thisTarget.TrySetCanceled();
+                                                                thisTarget.TrySetCanceled(thisTarget.CancellationToken);
                                                                 thisTarget.AttemptThreadSafeUnlink();
                                                             },
                     target, CancellationToken.None, Common.GetCreationOptionsForTask(), TaskScheduler.Default);
@@ -1542,6 +1567,9 @@ namespace System.Threading.Tasks.Dataflow
             internal IDisposable _unlinker;
             /// <summary>The registration used to unregister this target from the cancellation token.</summary>
             internal CancellationTokenRegistration _ctr;
+
+            /// <summary>The cancellation token associated with this operation.</summary>
+            internal CancellationToken CancellationToken;
 
             /// <summary>Completes the task when offered a message (but doesn't consume the message).</summary>
             DataflowMessageStatus ITargetBlock<T>.OfferMessage(DataflowMessageHeader messageHeader, T messageValue, ISourceBlock<T> source, bool consumeToAccept)
