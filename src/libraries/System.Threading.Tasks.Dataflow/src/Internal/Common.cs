@@ -17,10 +17,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Collections;
 using System.Runtime.ExceptionServices;
 
-#if USE_INTERNAL_THREADING
-using System.Threading.Tasks.Dataflow.Internal.Threading;
-#endif
-
 namespace System.Threading.Tasks.Dataflow.Internal
 {
     /// <summary>Internal helper utilities.</summary>

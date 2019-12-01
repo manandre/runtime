@@ -1,10 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <DefineConstants Condition="'$(TargetFramework)' == 'netstandard1.1' or '$(TargetFramework)' == 'netstandard2.0'">$(DefineConstants);FEATURE_TRACING</DefineConstants>
-    <DefineConstants Condition="'$(TargetFramework)' == 'netstandard1.0'">$(DefineConstants);USE_INTERNAL_CONCURRENT_COLLECTIONS</DefineConstants>
-    <DefineConstants Condition="'$(TargetFramework)' == 'netstandard1.0' or '$(TargetFramework)' == 'netstandard1.1'">$(DefineConstants);USE_INTERNAL_THREADING</DefineConstants>
-    <PackageTargetFramework Condition="'$(TargetFramework)' == 'netstandard1.1'">netstandard1.1;portable-net45+win8+wpa81</PackageTargetFramework>
-    <Configurations>netstandard2.0-Debug;netstandard2.0-Release;netstandard1.0-Debug;netstandard1.0-Release;netstandard1.1-Debug;netstandard1.1-Release</Configurations>
+    <DefineConstants>$(DefineConstants);FEATURE_TRACING</DefineConstants>
+    <Configurations>netcoreapp-Debug;netcoreapp-Release</Configurations>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Base\DataflowBlock.cs" />
@@ -44,28 +41,19 @@
       <Link>Common\Internal\Padding.cs</Link>
     </Compile>
   </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard1.0' or '$(TargetFramework)' == 'netstandard1.1'">
-    <Compile Include="Internal\Threading.cs" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard1.0'">
-    <Compile Include="Internal\ConcurrentQueue.cs" />
-    <Compile Include="Internal\IProducerConsumerCollection.cs" />
-  </ItemGroup>
   <ItemGroup>
     <None Include="XmlDocs\CommonXmlDocComments.xml" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="XmlDocs\System.Threading.Tasks.Dataflow.xml" />
   </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)' != 'netstandard1.0'">
-    <Reference Include="System.Diagnostics.Tracing" />
-    <Reference Include="System.Collections.Concurrent" />
-  </ItemGroup>
   <ItemGroup>
     <Reference Include="System.Collections" />
+    <Reference Include="System.Collections.Concurrent" />
     <Reference Include="System.Diagnostics.Contracts" />
     <Reference Include="System.Diagnostics.Debug" />
     <Reference Include="System.Diagnostics.Tools" />
+    <Reference Include="System.Diagnostics.Tracing" />
     <Reference Include="System.Dynamic.Runtime" />
     <Reference Include="System.Linq" />
     <Reference Include="System.Resources.ResourceManager" />
@@ -74,5 +62,8 @@
     <Reference Include="System.Runtime.Serialization.Primitives" />
     <Reference Include="System.Threading" />
     <Reference Include="System.Threading.Tasks" />
+    <Reference Include="System.Threading.Thread" />
+    <Reference Include="System.Threading.ThreadPool" />
+    <Reference Include="System.Threading.Timer" />
   </ItemGroup>
 </Project>
