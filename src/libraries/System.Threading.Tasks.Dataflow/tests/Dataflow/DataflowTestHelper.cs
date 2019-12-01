@@ -12,6 +12,7 @@ namespace System.Threading.Tasks.Dataflow.Tests
     {
         internal static bool[] BooleanValues = { true, false };
         internal static Func<int, IEnumerable<int>> ToEnumerable = item => Enumerable.Repeat(item, 1);
+        internal static Func<int, IAsyncEnumerable<int>> ToAsyncEnumerable = item => AsyncEnumerable.Repeat(item, 1);
 
         internal static ITargetBlock<int> PostRange(this ITargetBlock<int> target, int lowerBoundInclusive, int upperBoundExclusive)
         {
@@ -251,5 +252,35 @@ namespace System.Threading.Tasks.Dataflow.Tests
             return DataflowBlock.Encapsulate(transforms[0], transforms[transforms.Length - 1]);
         }
 
+    }
+
+    internal static partial class AsyncEnumerable
+    {
+        #pragma warning disable 1998
+        internal static async IAsyncEnumerable<int> Repeat(int item, int count)
+        {
+            for (int i = 0; i < count; i++)
+            {              
+                yield return item;
+            }
+        }
+
+        internal static async IAsyncEnumerable<int> Range(int start, int count)
+        {
+            var end = start + count;
+            for (int i = start; i < end; i++)
+            {                
+                yield return i;
+            }
+        }
+
+        internal static async IAsyncEnumerable<T> ToAsyncEnumerable<T>(this IEnumerable<T> enumerable)
+        {
+            foreach (T item in enumerable)
+            {                
+                yield return item;
+            }
+        }
+        #pragma warning restore 1998
     }
 }

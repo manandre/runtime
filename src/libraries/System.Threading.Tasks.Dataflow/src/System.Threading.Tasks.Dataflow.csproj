@@ -24,6 +24,7 @@
     <Compile Include="Blocks\TransformManyBlock.cs" />
     <Compile Include="Blocks\WriteOnceBlock.cs" />
     <Compile Include="Internal\ActionOnDispose.cs" />
+    <Compile Include="Internal\AsyncEnumerable.cs" />
     <Compile Include="Internal\Common.cs" />
     <Compile Include="Internal\DataflowEtwProvider.cs" />
     <Compile Include="Internal\EnumerableDebugView.cs" />
