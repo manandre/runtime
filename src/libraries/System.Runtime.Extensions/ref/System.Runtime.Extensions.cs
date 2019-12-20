@@ -1319,7 +1319,35 @@ namespace System.IO
         public virtual void Write(uint value) { }
         [System.CLSCompliantAttribute(false)]
         public virtual void Write(ulong value) { }
+
+        public virtual System.Threading.Tasks.ValueTask FlushAsync(System.Threading.CancellationToken cancellationToken = default) {  throw null; }
+        public virtual System.Threading.Tasks.ValueTask WriteAsync(bool value, System.Threading.CancellationToken cancellationToken = default) {  throw null; }
+        public virtual System.Threading.Tasks.ValueTask WriteAsync(byte value, System.Threading.CancellationToken cancellationToken = default) {  throw null; }
+        public virtual System.Threading.Tasks.ValueTask WriteAsync(byte[] buffer, System.Threading.CancellationToken cancellationToken = default) {  throw null; }
+        public virtual System.Threading.Tasks.ValueTask WriteAsync(byte[] buffer, int index, int count, System.Threading.CancellationToken cancellationToken = default) {  throw null; }
+        public virtual System.Threading.Tasks.ValueTask WriteAsync(char ch, System.Threading.CancellationToken cancellationToken = default) {  throw null; }
+        public virtual System.Threading.Tasks.ValueTask WriteAsync(char[] chars, System.Threading.CancellationToken cancellationToken = default) {  throw null; }
+        public virtual System.Threading.Tasks.ValueTask WriteAsync(char[] chars, int index, int count, System.Threading.CancellationToken cancellationToken = default) {  throw null; }
+        public virtual System.Threading.Tasks.ValueTask WriteAsync(decimal value, System.Threading.CancellationToken cancellationToken = default) {  throw null; }
+        public virtual System.Threading.Tasks.ValueTask WriteAsync(double value, System.Threading.CancellationToken cancellationToken = default) {  throw null; }
+        public virtual System.Threading.Tasks.ValueTask WriteAsync(short value, System.Threading.CancellationToken cancellationToken = default) {  throw null; }
+        public virtual System.Threading.Tasks.ValueTask WriteAsync(int value, System.Threading.CancellationToken cancellationToken = default) {  throw null; }
+        public virtual System.Threading.Tasks.ValueTask WriteAsync(long value, System.Threading.CancellationToken cancellationToken = default) {  throw null; }
+        public virtual System.Threading.Tasks.ValueTask WriteAsync(System.ReadOnlyMemory<byte> buffer, System.Threading.CancellationToken cancellationToken = default) {  throw null; }
+        public virtual System.Threading.Tasks.ValueTask WriteAsync(System.ReadOnlyMemory<char> chars, System.Threading.CancellationToken cancellationToken = default) {  throw null; }
+        [System.CLSCompliantAttribute(false)]
+        public virtual System.Threading.Tasks.ValueTask WriteAsync(sbyte value, System.Threading.CancellationToken cancellationToken = default) {  throw null; }
+        public virtual System.Threading.Tasks.ValueTask WriteAsync(float value, System.Threading.CancellationToken cancellationToken = default) {  throw null; }
+        public virtual System.Threading.Tasks.ValueTask WriteAsync(string value, System.Threading.CancellationToken cancellationToken = default) {  throw null; }
+        [System.CLSCompliantAttribute(false)]
+        public virtual System.Threading.Tasks.ValueTask WriteAsync(ushort value, System.Threading.CancellationToken cancellationToken = default) {  throw null; }
+        [System.CLSCompliantAttribute(false)]
+        public virtual System.Threading.Tasks.ValueTask WriteAsync(uint value, System.Threading.CancellationToken cancellationToken = default) {  throw null; }
+        [System.CLSCompliantAttribute(false)]
+        public virtual System.Threading.Tasks.ValueTask WriteAsync(ulong value, System.Threading.CancellationToken cancellationToken = default) {  throw null; }
+        
         protected void Write7BitEncodedInt(int value) { }
+        protected System.Threading.Tasks.ValueTask Write7BitEncodedIntAsync(int value, System.Threading.CancellationToken cancellationToken = default) {  throw null; }
     }
     public sealed partial class BufferedStream : System.IO.Stream
     {
