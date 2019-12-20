@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace System.IO.Compression
@@ -54,7 +55,7 @@ namespace System.IO.Compression
             }
         }
 
-        internal static async ValueTask ReadBytesAsync(Stream stream, byte[] buffer, int bytesToRead)
+        internal static async ValueTask ReadBytesAsync(Stream stream, byte[] buffer, int bytesToRead, CancellationToken cancellationToken = default)
         {
             int bytesLeftToRead = bytesToRead;
 
@@ -62,7 +63,7 @@ namespace System.IO.Compression
 
             while (bytesLeftToRead > 0)
             {
-                int bytesRead = await stream.ReadAsync(buffer, totalBytesRead, bytesLeftToRead).ConfigureAwait(false);
+                int bytesRead = await stream.ReadAsync(buffer, totalBytesRead, bytesLeftToRead, cancellationToken).ConfigureAwait(false);
                 if (bytesRead == 0) throw new IOException(SR.UnexpectedEndOfStream);
 
                 totalBytesRead += bytesRead;

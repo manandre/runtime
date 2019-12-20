@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace System.IO.Compression
@@ -446,11 +447,11 @@ namespace System.IO.Compression
             UnloadStreams();
         }
 
-        internal async ValueTask WriteAndFinishLocalEntryAsync()
+        internal async ValueTask WriteAndFinishLocalEntryAsync(CancellationToken cancellationToken = default)
         {
-            await CloseStreamsAsync();
-            await WriteLocalFileHeaderAndDataIfNeededAsync();
-            await UnloadStreamsAsync();
+            await CloseStreamsAsync().ConfigureAwait(false);
+            await WriteLocalFileHeaderAndDataIfNeededAsync(cancellationToken).ConfigureAwait(false);
+            await UnloadStreamsAsync().ConfigureAwait(false);
         }
 
         // should only throw an exception in extremely exceptional cases because it is called from dispose
@@ -558,7 +559,7 @@ namespace System.IO.Compression
                 writer.Write(_fileComment);
         }
 
-        internal async ValueTask WriteCentralDirectoryFileHeaderAsync()
+        internal async ValueTask WriteCentralDirectoryFileHeaderAsync(CancellationToken cancellationToken = default)
         {
             // This part is simple, because we should definitely know the sizes by this time
             BinaryWriter writer = new BinaryWriter(_archive.ArchiveStream);
@@ -628,39 +629,38 @@ namespace System.IO.Compression
                 extraFieldLength = (ushort)bigExtraFieldLength;
             }
 
-            // TODO: Use Async methods once available
-            writer.Write(ZipCentralDirectoryFileHeader.SignatureConstant);      // Central directory file header signature  (4 bytes)
-            writer.Write((byte)_versionMadeBySpecification);                    // Version made by Specification (version)  (1 byte)
-            writer.Write((byte)CurrentZipPlatform);                             // Version made by Compatibility (type)     (1 byte)
-            writer.Write((ushort)_versionToExtract);                            // Minimum version needed to extract        (2 bytes)
-            writer.Write((ushort)_generalPurposeBitFlag);                       // General Purpose bit flag                 (2 bytes)
-            writer.Write((ushort)CompressionMethod);                            // The Compression method                   (2 bytes)
-            writer.Write(ZipHelper.DateTimeToDosTime(_lastModified.DateTime));  // File last modification time and date     (4 bytes)
-            writer.Write(_crc32);                                               // CRC-32                                   (4 bytes)
-            writer.Write(compressedSizeTruncated);                              // Compressed Size                          (4 bytes)
-            writer.Write(uncompressedSizeTruncated);                            // Uncompressed Size                        (4 bytes)
-            writer.Write((ushort)_storedEntryNameBytes.Length);                 // File Name Length                         (2 bytes)
-            writer.Write(extraFieldLength);                                     // Extra Field Length                       (2 bytes)
+            await writer.WriteAsync(ZipCentralDirectoryFileHeader.SignatureConstant, cancellationToken).ConfigureAwait(false);      // Central directory file header signature  (4 bytes)
+            await writer.WriteAsync((byte)_versionMadeBySpecification, cancellationToken).ConfigureAwait(false);                    // Version made by Specification (version)  (1 byte)
+            await writer.WriteAsync((byte)CurrentZipPlatform, cancellationToken).ConfigureAwait(false);                             // Version made by Compatibility (type)     (1 byte)
+            await writer.WriteAsync((ushort)_versionToExtract, cancellationToken).ConfigureAwait(false);                            // Minimum version needed to extract        (2 bytes)
+            await writer.WriteAsync((ushort)_generalPurposeBitFlag, cancellationToken).ConfigureAwait(false);                       // General Purpose bit flag                 (2 bytes)
+            await writer.WriteAsync((ushort)CompressionMethod, cancellationToken).ConfigureAwait(false);                            // The Compression method                   (2 bytes)
+            await writer.WriteAsync(ZipHelper.DateTimeToDosTime(_lastModified.DateTime), cancellationToken).ConfigureAwait(false);  // File last modification time and date     (4 bytes)
+            await writer.WriteAsync(_crc32, cancellationToken).ConfigureAwait(false);                                               // CRC-32                                   (4 bytes)
+            await writer.WriteAsync(compressedSizeTruncated, cancellationToken).ConfigureAwait(false);                              // Compressed Size                          (4 bytes)
+            await writer.WriteAsync(uncompressedSizeTruncated, cancellationToken).ConfigureAwait(false);                            // Uncompressed Size                        (4 bytes)
+            await writer.WriteAsync((ushort)_storedEntryNameBytes.Length, cancellationToken).ConfigureAwait(false);                 // File Name Length                         (2 bytes)
+            await writer.WriteAsync(extraFieldLength, cancellationToken).ConfigureAwait(false);                                     // Extra Field Length                       (2 bytes)
 
             // This should hold because of how we read it originally in ZipCentralDirectoryFileHeader:
             Debug.Assert((_fileComment == null) || (_fileComment.Length <= ushort.MaxValue));
 
-            writer.Write(_fileComment != null ? (ushort)_fileComment.Length : (ushort)0); // file comment length
-            writer.Write((ushort)0); // disk number start
-            writer.Write((ushort)0); // internal file attributes
-            writer.Write(_externalFileAttr); // external file attributes
-            writer.Write(offsetOfLocalHeaderTruncated); // offset of local header
+            await writer.WriteAsync(_fileComment != null ? (ushort)_fileComment.Length : (ushort)0, cancellationToken).ConfigureAwait(false); // file comment length
+            await writer.WriteAsync((ushort)0, cancellationToken).ConfigureAwait(false); // disk number start
+            await writer.WriteAsync((ushort)0, cancellationToken).ConfigureAwait(false); // internal file attributes
+            await writer.WriteAsync(_externalFileAttr, cancellationToken).ConfigureAwait(false); // external file attributes
+            await writer.WriteAsync(offsetOfLocalHeaderTruncated, cancellationToken).ConfigureAwait(false); // offset of local header
 
-            writer.Write(_storedEntryNameBytes);
+            await writer.WriteAsync(_storedEntryNameBytes, cancellationToken).ConfigureAwait(false);
 
             // write extra fields
             if (zip64Needed)
-                await zip64ExtraField.WriteBlockAsync(_archive.ArchiveStream);
+                await zip64ExtraField.WriteBlockAsync(_archive.ArchiveStream, cancellationToken).ConfigureAwait(false);
             if (_cdUnknownExtraFields != null)
-                await ZipGenericExtraField.WriteAllBlocksAsync(_cdUnknownExtraFields, _archive.ArchiveStream);
+                await ZipGenericExtraField.WriteAllBlocksAsync(_cdUnknownExtraFields, _archive.ArchiveStream, cancellationToken).ConfigureAwait(false);
 
             if (_fileComment != null)
-                writer.Write(_fileComment);
+                await writer.WriteAsync(_fileComment, cancellationToken).ConfigureAwait(false);
         }
 
         // returns false if fails, will get called on every entry before closing in update mode
@@ -702,7 +702,7 @@ namespace System.IO.Compression
             return true;
         }
 
-        internal async ValueTask<bool> LoadLocalHeaderExtraFieldAndCompressedBytesIfNeededAsync()
+        internal async ValueTask<bool> LoadLocalHeaderExtraFieldAndCompressedBytesIfNeededAsync(CancellationToken cancellationToken = default)
         {
             // we should have made this exact call in _archive.Init through ThrowIfOpenable
             Debug.Assert(IsOpenable(false, true, out string? message));
@@ -731,9 +731,9 @@ namespace System.IO.Compression
 
                 for (int i = 0; i < _compressedBytes.Length - 1; i++)
                 {
-                    await ZipHelper.ReadBytesAsync(_archive.ArchiveStream, _compressedBytes[i], MaxSingleBufferSize);
+                    await ZipHelper.ReadBytesAsync(_archive.ArchiveStream, _compressedBytes[i], MaxSingleBufferSize, cancellationToken).ConfigureAwait(false);
                 }
-                await ZipHelper.ReadBytesAsync(_archive.ArchiveStream, _compressedBytes[_compressedBytes.Length - 1], (int)(_compressedSize % MaxSingleBufferSize));
+                await ZipHelper.ReadBytesAsync(_archive.ArchiveStream, _compressedBytes[_compressedBytes.Length - 1], (int)(_compressedSize % MaxSingleBufferSize), cancellationToken).ConfigureAwait(false);
             }
 
             return true;
@@ -1049,7 +1049,7 @@ namespace System.IO.Compression
             return zip64Used;
         }
 
-        private async ValueTask<bool> WriteLocalFileHeaderAsync(bool isEmptyFile)
+        private async ValueTask<bool> WriteLocalFileHeaderAsync(bool isEmptyFile, CancellationToken cancellationToken = default)
         {
             BinaryWriter writer = new BinaryWriter(_archive.ArchiveStream);
 
@@ -1131,25 +1131,24 @@ namespace System.IO.Compression
                 extraFieldLength = (ushort)bigExtraFieldLength;
             }
 
-            // TODO: Use Async methods once available
             // write header
-            writer.Write(ZipLocalFileHeader.SignatureConstant);
-            writer.Write((ushort)_versionToExtract);
-            writer.Write((ushort)_generalPurposeBitFlag);
-            writer.Write((ushort)CompressionMethod);
-            writer.Write(ZipHelper.DateTimeToDosTime(_lastModified.DateTime)); // uint
-            writer.Write(_crc32); // uint
-            writer.Write(compressedSizeTruncated); // uint
-            writer.Write(uncompressedSizeTruncated); // uint
-            writer.Write((ushort)_storedEntryNameBytes.Length);
-            writer.Write(extraFieldLength); // ushort
+            await writer.WriteAsync(ZipLocalFileHeader.SignatureConstant, cancellationToken).ConfigureAwait(false);
+            await writer.WriteAsync((ushort)_versionToExtract, cancellationToken).ConfigureAwait(false);
+            await writer.WriteAsync((ushort)_generalPurposeBitFlag, cancellationToken).ConfigureAwait(false);
+            await writer.WriteAsync((ushort)CompressionMethod, cancellationToken).ConfigureAwait(false);
+            await writer.WriteAsync(ZipHelper.DateTimeToDosTime(_lastModified.DateTime), cancellationToken).ConfigureAwait(false); // uint
+            await writer.WriteAsync(_crc32, cancellationToken).ConfigureAwait(false); // uint
+            await writer.WriteAsync(compressedSizeTruncated, cancellationToken).ConfigureAwait(false); // uint
+            await writer.WriteAsync(uncompressedSizeTruncated, cancellationToken).ConfigureAwait(false); // uint
+            await writer.WriteAsync((ushort)_storedEntryNameBytes.Length, cancellationToken).ConfigureAwait(false);
+            await writer.WriteAsync(extraFieldLength, cancellationToken).ConfigureAwait(false); // ushort
 
-            writer.Write(_storedEntryNameBytes);
+            await writer.WriteAsync(_storedEntryNameBytes, cancellationToken).ConfigureAwait(false);
 
             if (zip64Used)
-                await zip64ExtraField.WriteBlockAsync(_archive.ArchiveStream);
+                await zip64ExtraField.WriteBlockAsync(_archive.ArchiveStream, cancellationToken).ConfigureAwait(false);
             if (_lhUnknownExtraFields != null)
-                await ZipGenericExtraField.WriteAllBlocksAsync(_lhUnknownExtraFields, _archive.ArchiveStream);
+                await ZipGenericExtraField.WriteAllBlocksAsync(_lhUnknownExtraFields, _archive.ArchiveStream, cancellationToken).ConfigureAwait(false);
 
             return zip64Used;
         }
@@ -1206,7 +1205,7 @@ namespace System.IO.Compression
             }
         }
 
-        private async ValueTask WriteLocalFileHeaderAndDataIfNeededAsync()
+        private async ValueTask WriteLocalFileHeaderAndDataIfNeededAsync(CancellationToken cancellationToken = default)
         {
             // _storedUncompressedData gets frozen here, and is what gets written to the file
             if (_storedUncompressedData != null || _compressedBytes != null)
@@ -1222,8 +1221,8 @@ namespace System.IO.Compression
                                                     this))
                     {
                         _storedUncompressedData.Seek(0, SeekOrigin.Begin);
-                        await _storedUncompressedData.CopyToAsync(entryWriter).ConfigureAwait(false);
-                        await _storedUncompressedData.DisposeAsync();
+                        await _storedUncompressedData.CopyToAsync(entryWriter, cancellationToken).ConfigureAwait(false);
+                        await _storedUncompressedData.DisposeAsync().ConfigureAwait(false);
                         _storedUncompressedData = null;
                     }
                 }
@@ -1235,7 +1234,7 @@ namespace System.IO.Compression
                         _compressedSize = 0;
                     }
 
-                    await WriteLocalFileHeaderAsync(isEmptyFile: _uncompressedSize == 0);
+                    await WriteLocalFileHeaderAsync(isEmptyFile: _uncompressedSize == 0, cancellationToken).ConfigureAwait(false);
 
                     // according to ZIP specs, zero-byte files MUST NOT include file data
                     if (_uncompressedSize != 0)
@@ -1243,7 +1242,7 @@ namespace System.IO.Compression
                         Debug.Assert(_compressedBytes != null);
                         foreach (byte[] compressedBytes in _compressedBytes)
                         {
-                            await _archive.ArchiveStream.WriteAsync(compressedBytes, 0, compressedBytes.Length).ConfigureAwait(false);
+                            await _archive.ArchiveStream.WriteAsync(compressedBytes, 0, compressedBytes.Length, cancellationToken).ConfigureAwait(false);
                         }
                     }
                 }
@@ -1253,7 +1252,7 @@ namespace System.IO.Compression
                 if (_archive.Mode == ZipArchiveMode.Update || !_everOpenedForWrite)
                 {
                     _everOpenedForWrite = true;
-                    await WriteLocalFileHeaderAsync(isEmptyFile: true);
+                    await WriteLocalFileHeaderAsync(isEmptyFile: true, cancellationToken).ConfigureAwait(false);
                 }
             }
         }
@@ -1373,7 +1372,7 @@ namespace System.IO.Compression
         private async ValueTask UnloadStreamsAsync()
         {
             if (_storedUncompressedData != null)
-                await _storedUncompressedData.DisposeAsync();
+                await _storedUncompressedData.DisposeAsync().ConfigureAwait(false);
             _compressedBytes = null;
             _outstandingWriteStream = null;
         }
@@ -1392,7 +1391,7 @@ namespace System.IO.Compression
             // if the user left the stream open, close the underlying stream for them
             if (_outstandingWriteStream != null)
             {
-                await _outstandingWriteStream.DisposeAsync();
+                await _outstandingWriteStream.DisposeAsync().ConfigureAwait(false);
             }
         }
 
