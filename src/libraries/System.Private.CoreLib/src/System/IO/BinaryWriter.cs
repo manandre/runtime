@@ -129,6 +129,12 @@ namespace System.IO
             }
         }
 
+        public virtual async ValueTask<Stream> GetBaseStreamAsync(CancellationToken cancellationToken = default)
+        {
+            await FlushAsync(cancellationToken).ConfigureAwait(false);
+            return OutStream;
+        }
+
         // Clears all buffers for this writer and causes any buffered data to be
         // written to the underlying device.
         public virtual void Flush()
