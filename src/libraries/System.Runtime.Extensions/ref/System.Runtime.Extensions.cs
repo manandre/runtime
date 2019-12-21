@@ -1289,6 +1289,7 @@ namespace System.IO
         public BinaryWriter(System.IO.Stream output, System.Text.Encoding encoding) { }
         public BinaryWriter(System.IO.Stream output, System.Text.Encoding encoding, bool leaveOpen) { }
         public virtual System.IO.Stream BaseStream { get { throw null; } }
+        public virtual System.Threading.Tasks.ValueTask<System.IO.Stream> GetBaseStreamAsync(System.Threading.CancellationToken cancellationToken = default) { throw null; }
         public virtual void Close() { }
         public void Dispose() { }
         protected virtual void Dispose(bool disposing) { }
