@@ -142,9 +142,9 @@ namespace System.IO
             OutStream.Flush();
         }
 
-        public virtual async ValueTask FlushAsync(CancellationToken cancellationToken = default)
+        public virtual ValueTask FlushAsync(CancellationToken cancellationToken = default)
         {
-            await OutStream.FlushAsync(cancellationToken).ConfigureAwait(false);
+            return new ValueTask(OutStream.FlushAsync(cancellationToken));
         }
 
         public virtual long Seek(int offset, SeekOrigin origin)
@@ -161,10 +161,10 @@ namespace System.IO
             OutStream.Write(_buffer, 0, 1);
         }
 
-        public virtual async ValueTask WriteAsync(bool value, CancellationToken cancellationToken = default)
+        public virtual ValueTask WriteAsync(bool value, CancellationToken cancellationToken = default)
         {
             _buffer[0] = (byte)(value ? 1 : 0);
-            await OutStream.WriteAsync(_buffer, 0, 1, cancellationToken).ConfigureAwait(false);
+            return new ValueTask(OutStream.WriteAsync(_buffer, 0, 1, cancellationToken));
         }
 
         // Writes a byte to this stream. The current position of the stream is
@@ -175,9 +175,9 @@ namespace System.IO
             OutStream.WriteByte(value);
         }
 
-        public virtual async ValueTask WriteAsync(byte value, CancellationToken cancellationToken = default)
+        public virtual ValueTask WriteAsync(byte value, CancellationToken cancellationToken = default)
         {
-            await OutStream.WriteAsync(new[] { value }, 0, 1, cancellationToken).ConfigureAwait(false);
+            return OutStream.WriteByteAsync(value, cancellationToken);
         }
 
         // Writes a signed byte to this stream. The current position of the stream
@@ -190,9 +190,9 @@ namespace System.IO
         }
 
         [CLSCompliant(false)]
-        public virtual async ValueTask WriteAsync(sbyte value, CancellationToken cancellationToken = default)
+        public virtual ValueTask WriteAsync(sbyte value, CancellationToken cancellationToken = default)
         {
-            await OutStream.WriteAsync(new[] { (byte)value }, 0, 1, cancellationToken).ConfigureAwait(false);
+            return OutStream.WriteByteAsync((byte)value, cancellationToken);
         }
 
         // Writes a byte array to this stream.
@@ -207,11 +207,11 @@ namespace System.IO
             OutStream.Write(buffer, 0, buffer.Length);
         }
 
-        public virtual async ValueTask WriteAsync(byte[] buffer, CancellationToken cancellationToken = default)
+        public virtual ValueTask WriteAsync(byte[] buffer, CancellationToken cancellationToken = default)
         {
             if (buffer == null)
                 throw new ArgumentNullException(nameof(buffer));
-            await OutStream.WriteAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
+            return new ValueTask(OutStream.WriteAsync(buffer, 0, buffer.Length, cancellationToken));
         }
 
         // Writes a section of a byte array to this stream.
@@ -224,9 +224,9 @@ namespace System.IO
             OutStream.Write(buffer, index, count);
         }
 
-        public virtual async ValueTask WriteAsync(byte[] buffer, int index, int count, CancellationToken cancellationToken = default)
+        public virtual ValueTask WriteAsync(byte[] buffer, int index, int count, CancellationToken cancellationToken = default)
         {
-            await OutStream.WriteAsync(buffer, index, count, cancellationToken).ConfigureAwait(false);
+            return new ValueTask(OutStream.WriteAsync(buffer, index, count, cancellationToken));
         }
 
         // Writes a character to this stream. The current position of the stream is
@@ -247,7 +247,7 @@ namespace System.IO
             OutStream.Write(_buffer, 0, numBytes);
         }
 
-        public virtual async ValueTask WriteAsync(char ch, CancellationToken cancellationToken = default)
+        public virtual ValueTask WriteAsync(char ch, CancellationToken cancellationToken = default)
         {
             if (char.IsSurrogate(ch))
                 throw new ArgumentException(SR.Arg_SurrogatesNotAllowedAsSingleChar);
@@ -261,7 +261,7 @@ namespace System.IO
                     numBytes = _encoder.GetBytes(&ch, 1, pBytes, _buffer.Length, flush: true);
                 }
             }
-            await OutStream.WriteAsync(_buffer, 0, numBytes, cancellationToken).ConfigureAwait(false);
+            return new ValueTask(OutStream.WriteAsync(_buffer, 0, numBytes, cancellationToken));
         }
 
         // Writes a character array to this stream.
@@ -278,13 +278,13 @@ namespace System.IO
             OutStream.Write(bytes, 0, bytes.Length);
         }
 
-        public virtual async ValueTask WriteAsync(char[] chars, CancellationToken cancellationToken = default)
+        public virtual ValueTask WriteAsync(char[] chars, CancellationToken cancellationToken = default)
         {
             if (chars == null)
                 throw new ArgumentNullException(nameof(chars));
 
             byte[] bytes = _encoding.GetBytes(chars, 0, chars.Length);
-            await OutStream.WriteAsync(bytes, 0, bytes.Length, cancellationToken).ConfigureAwait(false);
+            return new ValueTask(OutStream.WriteAsync(bytes, 0, bytes.Length, cancellationToken));
         }
 
         // Writes a section of a character array to this stream.
@@ -298,10 +298,10 @@ namespace System.IO
             OutStream.Write(bytes, 0, bytes.Length);
         }
 
-        public virtual async ValueTask WriteAsync(char[] chars, int index, int count, CancellationToken cancellationToken = default)
+        public virtual ValueTask WriteAsync(char[] chars, int index, int count, CancellationToken cancellationToken = default)
         {
             byte[] bytes = _encoding.GetBytes(chars, index, count);
-            await OutStream.WriteAsync(bytes, 0, bytes.Length, cancellationToken).ConfigureAwait(false);
+            return new ValueTask(OutStream.WriteAsync(bytes, 0, bytes.Length, cancellationToken));
         }
 
         // Writes a double to this stream. The current position of the stream is
@@ -321,7 +321,7 @@ namespace System.IO
             OutStream.Write(_buffer, 0, 8);
         }
 
-        public virtual async ValueTask WriteAsync(double value, CancellationToken cancellationToken = default)
+        public virtual ValueTask WriteAsync(double value, CancellationToken cancellationToken = default)
         {
             unsafe
             {
@@ -335,7 +335,7 @@ namespace System.IO
                 _buffer[6] = (byte)(TmpValue >> 48);
                 _buffer[7] = (byte)(TmpValue >> 56);
             }
-            await OutStream.WriteAsync(_buffer, 0, 8, cancellationToken).ConfigureAwait(false);
+            return new ValueTask(OutStream.WriteAsync(_buffer, 0, 8, cancellationToken));
         }
 
         public virtual void Write(decimal value)
@@ -344,10 +344,10 @@ namespace System.IO
             OutStream.Write(_buffer, 0, 16);
         }
 
-        public virtual async ValueTask WriteAsync(decimal value, CancellationToken cancellationToken = default)
+        public virtual ValueTask WriteAsync(decimal value, CancellationToken cancellationToken = default)
         {
             decimal.GetBytes(value, _buffer);
-            await OutStream.WriteAsync(_buffer, 0, 16, cancellationToken).ConfigureAwait(false);
+            return new ValueTask(OutStream.WriteAsync(_buffer, 0, 16, cancellationToken));
         }
 
         // Writes a two-byte signed integer to this stream. The current position of
@@ -360,11 +360,11 @@ namespace System.IO
             OutStream.Write(_buffer, 0, 2);
         }
 
-        public virtual async ValueTask WriteAsync(short value, CancellationToken cancellationToken = default)
+        public virtual ValueTask WriteAsync(short value, CancellationToken cancellationToken = default)
         {
             _buffer[0] = (byte)value;
             _buffer[1] = (byte)(value >> 8);
-            await OutStream.WriteAsync(_buffer, 0, 2, cancellationToken).ConfigureAwait(false);
+            return new ValueTask(OutStream.WriteAsync(_buffer, 0, 2, cancellationToken));
         }
 
         // Writes a two-byte unsigned integer to this stream. The current position
@@ -379,11 +379,11 @@ namespace System.IO
         }
 
         [CLSCompliant(false)]
-        public virtual async ValueTask WriteAsync(ushort value, CancellationToken cancellationToken = default)
+        public virtual ValueTask WriteAsync(ushort value, CancellationToken cancellationToken = default)
         {
             _buffer[0] = (byte)value;
             _buffer[1] = (byte)(value >> 8);
-            await OutStream.WriteAsync(_buffer, 0, 2, cancellationToken).ConfigureAwait(false);
+            return new ValueTask(OutStream.WriteAsync(_buffer, 0, 2, cancellationToken));
         }
 
         // Writes a four-byte signed integer to this stream. The current position
@@ -398,13 +398,13 @@ namespace System.IO
             OutStream.Write(_buffer, 0, 4);
         }
 
-        public virtual async ValueTask WriteAsync(int value, CancellationToken cancellationToken = default)
+        public virtual ValueTask WriteAsync(int value, CancellationToken cancellationToken = default)
         {
             _buffer[0] = (byte)value;
             _buffer[1] = (byte)(value >> 8);
             _buffer[2] = (byte)(value >> 16);
             _buffer[3] = (byte)(value >> 24);
-            await OutStream.WriteAsync(_buffer, 0, 4, cancellationToken).ConfigureAwait(false);
+            return new ValueTask(OutStream.WriteAsync(_buffer, 0, 4, cancellationToken));
         }
 
         // Writes a four-byte unsigned integer to this stream. The current position
@@ -421,13 +421,13 @@ namespace System.IO
         }
 
         [CLSCompliant(false)]
-        public virtual async ValueTask WriteAsync(uint value, CancellationToken cancellationToken = default)
+        public virtual ValueTask WriteAsync(uint value, CancellationToken cancellationToken = default)
         {
             _buffer[0] = (byte)value;
             _buffer[1] = (byte)(value >> 8);
             _buffer[2] = (byte)(value >> 16);
             _buffer[3] = (byte)(value >> 24);
-            await OutStream.WriteAsync(_buffer, 0, 4, cancellationToken).ConfigureAwait(false);
+            return new ValueTask(OutStream.WriteAsync(_buffer, 0, 4, cancellationToken));
         }
 
         // Writes an eight-byte signed integer to this stream. The current position
@@ -446,7 +446,7 @@ namespace System.IO
             OutStream.Write(_buffer, 0, 8);
         }
 
-        public virtual async ValueTask WriteAsync(long value, CancellationToken cancellationToken = default)
+        public virtual ValueTask WriteAsync(long value, CancellationToken cancellationToken = default)
         {
             _buffer[0] = (byte)value;
             _buffer[1] = (byte)(value >> 8);
@@ -456,7 +456,7 @@ namespace System.IO
             _buffer[5] = (byte)(value >> 40);
             _buffer[6] = (byte)(value >> 48);
             _buffer[7] = (byte)(value >> 56);
-            await OutStream.WriteAsync(_buffer, 0, 8, cancellationToken).ConfigureAwait(false);
+            return new ValueTask(OutStream.WriteAsync(_buffer, 0, 8, cancellationToken));
         }
 
         // Writes an eight-byte unsigned integer to this stream. The current
@@ -477,7 +477,7 @@ namespace System.IO
         }
 
         [CLSCompliant(false)]
-        public virtual async ValueTask WriteAsync(ulong value, CancellationToken cancellationToken = default)
+        public virtual ValueTask WriteAsync(ulong value, CancellationToken cancellationToken = default)
         {
             _buffer[0] = (byte)value;
             _buffer[1] = (byte)(value >> 8);
@@ -487,7 +487,7 @@ namespace System.IO
             _buffer[5] = (byte)(value >> 40);
             _buffer[6] = (byte)(value >> 48);
             _buffer[7] = (byte)(value >> 56);
-            await OutStream.WriteAsync(_buffer, 0, 8, cancellationToken).ConfigureAwait(false);
+            return new ValueTask(OutStream.WriteAsync(_buffer, 0, 8, cancellationToken));
         }
 
         // Writes a float to this stream. The current position of the stream is
@@ -503,7 +503,7 @@ namespace System.IO
             OutStream.Write(_buffer, 0, 4);
         }
 
-        public virtual async ValueTask WriteAsync(float value, CancellationToken cancellationToken = default)
+        public virtual ValueTask WriteAsync(float value, CancellationToken cancellationToken = default)
         {
             unsafe
             {
@@ -513,7 +513,7 @@ namespace System.IO
                 _buffer[2] = (byte)(TmpValue >> 16);
                 _buffer[3] = (byte)(TmpValue >> 24);
             }
-            await OutStream.WriteAsync(_buffer, 0, 4, cancellationToken).ConfigureAwait(false);
+            return new ValueTask(OutStream.WriteAsync(_buffer, 0, 4, cancellationToken));
         }
 
         // Writes a length-prefixed string to this stream in the BinaryWriter's

@@ -844,6 +844,15 @@ namespace System.IO
             return oneByteArray[0];
         }
 
+        public virtual async ValueTask<int> ReadByteAsync(CancellationToken cancellationToken = default)
+        {
+            byte[] oneByteArray = new byte[1];
+            int r = await ReadAsync(oneByteArray, 0, 1).ConfigureAwait(false);
+            if (r == 0)
+                return -1;
+            return oneByteArray[0];
+        }
+
         public abstract void Write(byte[] buffer, int offset, int count);
 
         public virtual void Write(ReadOnlySpan<byte> buffer)
@@ -867,6 +876,13 @@ namespace System.IO
             byte[] oneByteArray = new byte[1];
             oneByteArray[0] = value;
             Write(oneByteArray, 0, 1);
+        }
+
+        public virtual ValueTask WriteByteAsync(byte value, CancellationToken cancellationToken = default)
+        {
+            byte[] oneByteArray = new byte[1];
+            oneByteArray[0] = value;
+            return new ValueTask(WriteAsync(oneByteArray, 0, 1));
         }
 
         public static Stream Synchronized(Stream stream)
