@@ -1279,6 +1279,35 @@ namespace System.IO
         public virtual uint ReadUInt32() { throw null; }
         [System.CLSCompliantAttribute(false)]
         public virtual ulong ReadUInt64() { throw null; }
+
+        protected virtual System.Threading.Tasks.ValueTask FillBufferAsync(int numBytes, System.Threading.CancellationToken cancellationToken = default) { throw null; }
+        public virtual System.Threading.Tasks.ValueTask<int> PeekCharAsync(System.Threading.CancellationToken cancellationToken = default) { throw null; }
+        public virtual System.Threading.Tasks.ValueTask<int> ReadAsync(System.Threading.CancellationToken cancellationToken = default) { throw null; }
+        public virtual System.Threading.Tasks.ValueTask<int> ReadAsync(byte[] buffer, int index, int count, System.Threading.CancellationToken cancellationToken = default) { throw null; }
+        public virtual System.Threading.Tasks.ValueTask<int> ReadAsync(char[] buffer, int index, int count, System.Threading.CancellationToken cancellationToken = default) { throw null; }
+        public virtual System.Threading.Tasks.ValueTask<int> ReadAsync(System.Memory<byte> buffer, System.Threading.CancellationToken cancellationToken = default) { throw null; }
+        public virtual System.Threading.Tasks.ValueTask<int> ReadAsync(System.Memory<char> buffer, System.Threading.CancellationToken cancellationToken = default) { throw null; }
+        protected internal System.Threading.Tasks.ValueTask<int> Read7BitEncodedIntAsync(System.Threading.CancellationToken cancellationToken = default) { throw null; }
+        public virtual System.Threading.Tasks.ValueTask<bool> ReadBooleanAsync(System.Threading.CancellationToken cancellationToken = default) { throw null; }
+        public virtual System.Threading.Tasks.ValueTask<byte> ReadByteAsync(System.Threading.CancellationToken cancellationToken = default) { throw null; }
+        public virtual System.Threading.Tasks.ValueTask<byte[]> ReadBytesAsync(int count, System.Threading.CancellationToken cancellationToken = default) { throw null; }
+        public virtual System.Threading.Tasks.ValueTask<char> ReadCharAsync(System.Threading.CancellationToken cancellationToken = default) { throw null; }
+        public virtual System.Threading.Tasks.ValueTask<char[]> ReadCharsAsync(int count, System.Threading.CancellationToken cancellationToken = default) { throw null; }
+        public virtual System.Threading.Tasks.ValueTask<decimal> ReadDecimalAsync(System.Threading.CancellationToken cancellationToken = default) { throw null; }
+        public virtual System.Threading.Tasks.ValueTask<double> ReadDoubleAsync(System.Threading.CancellationToken cancellationToken = default) { throw null; }
+        public virtual System.Threading.Tasks.ValueTask<short> ReadInt16Async(System.Threading.CancellationToken cancellationToken = default) { throw null; }
+        public virtual System.Threading.Tasks.ValueTask<int> ReadInt32Async(System.Threading.CancellationToken cancellationToken = default) { throw null; }
+        public virtual System.Threading.Tasks.ValueTask<long> ReadInt64Async(System.Threading.CancellationToken cancellationToken = default) { throw null; }
+        [System.CLSCompliantAttribute(false)]
+        public virtual System.Threading.Tasks.ValueTask<sbyte> ReadSByteAsync(System.Threading.CancellationToken cancellationToken = default) { throw null; }
+        public virtual System.Threading.Tasks.ValueTask<float> ReadSingleAsync(System.Threading.CancellationToken cancellationToken = default) { throw null; }
+        public virtual System.Threading.Tasks.ValueTask<string> ReadStringAsync(System.Threading.CancellationToken cancellationToken = default) { throw null; }
+        [System.CLSCompliantAttribute(false)]
+        public virtual System.Threading.Tasks.ValueTask<ushort> ReadUInt16Async(System.Threading.CancellationToken cancellationToken = default) { throw null; }
+        [System.CLSCompliantAttribute(false)]
+        public virtual System.Threading.Tasks.ValueTask<uint> ReadUInt32Async(System.Threading.CancellationToken cancellationToken = default) { throw null; }
+        [System.CLSCompliantAttribute(false)]
+        public virtual System.Threading.Tasks.ValueTask<ulong> ReadUInt64Async(System.Threading.CancellationToken cancellationToken = default) { throw null; }
     }
     public partial class BinaryWriter : System.IAsyncDisposable, System.IDisposable
     {

@@ -5314,6 +5314,7 @@ namespace System.IO
         public virtual System.Threading.Tasks.Task<int> ReadAsync(byte[] buffer, int offset, int count, System.Threading.CancellationToken cancellationToken) { throw null; }
         public virtual System.Threading.Tasks.ValueTask<int> ReadAsync(System.Memory<byte> buffer, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) { throw null; }
         public virtual int ReadByte() { throw null; }
+        public virtual System.Threading.Tasks.ValueTask<int> ReadByteAsync(System.Threading.CancellationToken cancellationToken = default) { throw null; }
         public abstract long Seek(long offset, System.IO.SeekOrigin origin);
         public abstract void SetLength(long value);
         public static System.IO.Stream Synchronized(System.IO.Stream stream) { throw null; }
@@ -5323,6 +5324,7 @@ namespace System.IO
         public virtual System.Threading.Tasks.Task WriteAsync(byte[] buffer, int offset, int count, System.Threading.CancellationToken cancellationToken) { throw null; }
         public virtual System.Threading.Tasks.ValueTask WriteAsync(System.ReadOnlyMemory<byte> buffer, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) { throw null; }
         public virtual void WriteByte(byte value) { }
+        public virtual System.Threading.Tasks.ValueTask WriteByteAsync(byte value, System.Threading.CancellationToken cancellationToken = default) { throw null; }
     }
 }
 namespace System.Reflection

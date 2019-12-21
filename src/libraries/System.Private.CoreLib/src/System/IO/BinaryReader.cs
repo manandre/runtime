@@ -18,6 +18,8 @@ using System.Buffers.Binary;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace System.IO
 {
@@ -134,6 +136,21 @@ namespace System.IO
             return ch;
         }
 
+        public virtual async ValueTask<int> PeekCharAsync(CancellationToken cancellationToken = default)
+        {
+            ThrowIfDisposed();
+
+            if (!_stream.CanSeek)
+            {
+                return -1;
+            }
+
+            long origPos = _stream.Position;
+            int ch = await ReadAsync().ConfigureAwait(false);
+            _stream.Position = origPos;
+            return ch;
+        }
+
         public virtual int Read()
         {
             ThrowIfDisposed();
@@ -205,7 +222,81 @@ namespace System.IO
             return singleChar[0];
         }
 
+        public virtual async ValueTask<int> ReadAsync(CancellationToken cancellationToken = default)
+        {
+            ThrowIfDisposed();
+
+            int charsRead = 0;
+            int numBytes;
+            long posSav = 0;
+
+            if (_stream.CanSeek)
+            {
+                posSav = _stream.Position;
+            }
+
+            _charBytes ??= new byte[MaxCharBytesSize];
+
+            Memory<char> singleChar = new char[1];
+
+            while (charsRead == 0)
+            {
+                // We really want to know what the minimum number of bytes per char
+                // is for our encoding.  Otherwise for UnicodeEncoding we'd have to
+                // do ~1+log(n) reads to read n characters.
+                // Assume 1 byte can be 1 char unless _2BytesPerChar is true.
+                numBytes = _2BytesPerChar ? 2 : 1;
+
+                int r = await _stream.ReadByteAsync(cancellationToken);
+                _charBytes[0] = (byte)r;
+                if (r == -1)
+                {
+                    numBytes = 0;
+                }
+                if (numBytes == 2)
+                {
+                    r = await _stream.ReadByteAsync(cancellationToken);
+                    _charBytes[1] = (byte)r;
+                    if (r == -1)
+                    {
+                        numBytes = 1;
+                    }
+                }
+
+                if (numBytes == 0)
+                {
+                    return -1;
+                }
+
+                Debug.Assert(numBytes == 1 || numBytes == 2, "BinaryReader::ReadOneChar assumes it's reading one or 2 bytes only.");
+
+                try
+                {
+                    charsRead = _decoder.GetChars(new ReadOnlySpan<byte>(_charBytes, 0, numBytes), singleChar.Span, flush: false);
+                }
+                catch
+                {
+                    // Handle surrogate char
+
+                    if (_stream.CanSeek)
+                    {
+                        _stream.Seek(posSav - _stream.Position, SeekOrigin.Current);
+                    }
+                    // else - we can't do much here
+
+                    throw;
+                }
+
+                Debug.Assert(charsRead < 2, "BinaryReader::ReadOneChar - assuming we only got 0 or 1 char, not 2!");
+            }
+            Debug.Assert(charsRead > 0);
+            return singleChar.Span[0];
+        }
+
         public virtual byte ReadByte() => InternalReadByte();
+
+        public virtual ValueTask<byte> ReadByteAsync(CancellationToken cancellationToken = default) =>
+            InternalReadByteAsync(cancellationToken);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)] // Inlined to avoid some method call overhead with InternalRead.
         private byte InternalReadByte()
@@ -221,9 +312,51 @@ namespace System.IO
             return (byte)b;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] // Inlined to avoid some method call overhead with InternalRead.
+        private async ValueTask<byte> InternalReadByteAsync(CancellationToken cancellationToken = default)
+        {
+            ThrowIfDisposed();
+
+            int b = await _stream.ReadByteAsync(cancellationToken);
+            if (b == -1)
+            {
+                throw Error.GetEndOfFile();
+            }
+
+            return (byte)b;
+        }
+
         [CLSCompliant(false)]
         public virtual sbyte ReadSByte() => (sbyte)InternalReadByte();
+
+        [CLSCompliant(false)]
+        public virtual async ValueTask<sbyte> ReadSByteAsync(CancellationToken cancellationToken = default)
+        {
+            ThrowIfDisposed();
+
+            int b = await _stream.ReadByteAsync(cancellationToken);
+            if (b == -1)
+            {
+                throw Error.GetEndOfFile();
+            }
+
+            return (sbyte)b;
+        }
+
         public virtual bool ReadBoolean() => InternalReadByte() != 0;
+
+        public virtual async ValueTask<bool> ReadBooleanAsync(CancellationToken cancellationToken = default)
+        {
+            ThrowIfDisposed();
+
+            int b = await _stream.ReadByteAsync(cancellationToken);
+            if (b == -1)
+            {
+                throw Error.GetEndOfFile();
+            }
+
+            return b != 0;
+        }
 
         public virtual char ReadChar()
         {
@@ -235,19 +368,60 @@ namespace System.IO
             return (char)value;
         }
 
+        public virtual async ValueTask<char> ReadCharAsync(CancellationToken cancellationToken = default)
+        {
+            int value = await ReadAsync(cancellationToken);
+            if (value == -1)
+            {
+                throw Error.GetEndOfFile();
+            }
+            return (char)value;
+        }
+
         public virtual short ReadInt16() => BinaryPrimitives.ReadInt16LittleEndian(InternalRead(2));
+        public virtual async ValueTask<short> ReadInt16Async(CancellationToken cancellationToken = default) =>
+            BinaryPrimitives.ReadInt16LittleEndian((await InternalReadAsync(2, cancellationToken)).Span);
 
         [CLSCompliant(false)]
         public virtual ushort ReadUInt16() => BinaryPrimitives.ReadUInt16LittleEndian(InternalRead(2));
+        [CLSCompliant(false)]
+        public virtual async ValueTask<ushort> ReadUInt16Async(CancellationToken cancellationToken = default) =>
+            BinaryPrimitives.ReadUInt16LittleEndian((await InternalReadAsync(2, cancellationToken)).Span);
 
         public virtual int ReadInt32() => BinaryPrimitives.ReadInt32LittleEndian(InternalRead(4));
+        public virtual async ValueTask<int> ReadInt32Async(CancellationToken cancellationToken = default) =>
+            BinaryPrimitives.ReadInt32LittleEndian((await InternalReadAsync(4, cancellationToken)).Span);
         [CLSCompliant(false)]
         public virtual uint ReadUInt32() => BinaryPrimitives.ReadUInt32LittleEndian(InternalRead(4));
+        [CLSCompliant(false)]
+        public virtual async ValueTask<uint> ReadUInt32Async(CancellationToken cancellationToken = default) =>
+            BinaryPrimitives.ReadUInt32LittleEndian((await InternalReadAsync(4, cancellationToken)).Span);
         public virtual long ReadInt64() => BinaryPrimitives.ReadInt64LittleEndian(InternalRead(8));
+        public virtual async ValueTask<long> ReadInt64Async(CancellationToken cancellationToken = default) =>
+            BinaryPrimitives.ReadInt64LittleEndian((await InternalReadAsync(8, cancellationToken)).Span);
         [CLSCompliant(false)]
         public virtual ulong ReadUInt64() => BinaryPrimitives.ReadUInt64LittleEndian(InternalRead(8));
+        [CLSCompliant(false)]
+        public virtual async ValueTask<ulong> ReadUInt64Async(CancellationToken cancellationToken = default) =>
+            BinaryPrimitives.ReadUInt64LittleEndian((await InternalReadAsync(8, cancellationToken)).Span);
         public virtual unsafe float ReadSingle() => BitConverter.Int32BitsToSingle(BinaryPrimitives.ReadInt32LittleEndian(InternalRead(4)));
+        public virtual async ValueTask<float> ReadSingleAsync(CancellationToken cancellationToken = default)
+        {
+            ReadOnlyMemory<byte> buffer = await InternalReadAsync(4, cancellationToken);
+            unsafe
+            {
+                return BitConverter.Int32BitsToSingle(BinaryPrimitives.ReadInt32LittleEndian(buffer.Span));
+            }
+        }
         public virtual unsafe double ReadDouble() => BitConverter.Int64BitsToDouble(BinaryPrimitives.ReadInt64LittleEndian(InternalRead(8)));
+        public virtual async ValueTask<double> ReadDoubleAsync(CancellationToken cancellationToken = default)
+        {
+            ReadOnlyMemory<byte> buffer = await InternalReadAsync(8, cancellationToken);
+            unsafe
+            {
+                return BitConverter.Int64BitsToDouble(BinaryPrimitives.ReadInt64LittleEndian(buffer.Span));
+            }
+        }
 
         public virtual decimal ReadDecimal()
         {
@@ -255,6 +429,20 @@ namespace System.IO
             try
             {
                 return decimal.ToDecimal(span);
+            }
+            catch (ArgumentException e)
+            {
+                // ReadDecimal cannot leak out ArgumentException
+                throw new IOException(SR.Arg_DecBitCtor, e);
+            }
+        }
+
+        public virtual async ValueTask<decimal> ReadDecimalAsync(CancellationToken cancellationToken = default)
+        {
+            ReadOnlyMemory<byte> memory = await InternalReadAsync(16, cancellationToken);
+            try
+            {
+                return decimal.ToDecimal(memory.Span);
             }
             catch (ArgumentException e)
             {
@@ -314,6 +502,57 @@ namespace System.IO
             return StringBuilderCache.GetStringAndRelease(sb);
         }
 
+        public virtual async ValueTask<string> ReadStringAsync(CancellationToken cancellationToken = default)
+        {
+            ThrowIfDisposed();
+
+            int currPos = 0;
+            int n;
+            int stringLength;
+            int readLength;
+            int charsRead;
+
+            // Length of the string in bytes, not chars
+            stringLength = await Read7BitEncodedIntAsync(cancellationToken);
+            if (stringLength < 0)
+            {
+                throw new IOException(SR.Format(SR.IO_InvalidStringLen_Len, stringLength));
+            }
+
+            if (stringLength == 0)
+            {
+                return string.Empty;
+            }
+
+            _charBytes ??= new byte[MaxCharBytesSize];
+            _charBuffer ??= new char[_maxCharsSize];
+
+            StringBuilder? sb = null;
+            do
+            {
+                readLength = ((stringLength - currPos) > MaxCharBytesSize) ? MaxCharBytesSize : (stringLength - currPos);
+
+                n = await _stream.ReadAsync(_charBytes, 0, readLength, cancellationToken).ConfigureAwait(false);
+                if (n == 0)
+                {
+                    throw Error.GetEndOfFile();
+                }
+
+                charsRead = _decoder.GetChars(_charBytes, 0, n, _charBuffer, 0);
+
+                if (currPos == 0 && n == stringLength)
+                {
+                    return new string(_charBuffer, 0, charsRead);
+                }
+
+                sb ??= StringBuilderCache.Acquire(stringLength); // Actual string length in chars may be smaller.
+                sb.Append(_charBuffer, 0, charsRead);
+                currPos += n;
+            } while (currPos < stringLength);
+
+            return StringBuilderCache.GetStringAndRelease(sb);
+        }
+
         public virtual int Read(char[] buffer, int index, int count)
         {
             if (buffer == null)
@@ -337,10 +576,39 @@ namespace System.IO
             return InternalReadChars(new Span<char>(buffer, index, count));
         }
 
+        public virtual ValueTask<int> ReadAsync(char[] buffer, int index, int count, CancellationToken cancellationToken = default)
+        {
+            if (buffer == null)
+            {
+                throw new ArgumentNullException(nameof(buffer), SR.ArgumentNull_Buffer);
+            }
+            if (index < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(index), SR.ArgumentOutOfRange_NeedNonNegNum);
+            }
+            if (count < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(count), SR.ArgumentOutOfRange_NeedNonNegNum);
+            }
+            if (buffer.Length - index < count)
+            {
+                throw new ArgumentException(SR.Argument_InvalidOffLen);
+            }
+            ThrowIfDisposed();
+
+            return InternalReadCharsAsync(new Memory<char>(buffer, index, count), cancellationToken);
+        }
+
         public virtual int Read(Span<char> buffer)
         {
             ThrowIfDisposed();
             return InternalReadChars(buffer);
+        }
+
+        public virtual ValueTask<int> ReadAsync(Memory<char> buffer, CancellationToken cancellationToken = default)
+        {
+            ThrowIfDisposed();
+            return InternalReadCharsAsync(buffer, cancellationToken);
         }
 
         private int InternalReadChars(Span<char> buffer)
@@ -421,6 +689,84 @@ namespace System.IO
             return totalCharsRead;
         }
 
+        private async ValueTask<int> InternalReadCharsAsync(Memory<char> buffer, CancellationToken cancellationToken = default)
+        {
+            Debug.Assert(!_disposed);
+
+            int totalCharsRead = 0;
+
+            while (!buffer.IsEmpty)
+            {
+                int numBytes = buffer.Length;
+
+                // We really want to know what the minimum number of bytes per char
+                // is for our encoding.  Otherwise for UnicodeEncoding we'd have to
+                // do ~1+log(n) reads to read n characters.
+                if (_2BytesPerChar)
+                {
+                    numBytes <<= 1;
+                }
+
+                // We do not want to read even a single byte more than necessary.
+                //
+                // Subtract pending bytes that the decoder may be holding onto. This assumes that each
+                // decoded char corresponds to one or more bytes. Note that custom encodings or encodings with
+                // a custom replacement sequence may violate this assumption.
+                if (numBytes > 1)
+                {
+                    DecoderNLS? decoder = _decoder as DecoderNLS;
+                    // For internal decoders, we can check whether the decoder has any pending state.
+                    // For custom decoders, assume that the decoder has pending state.
+                    if (decoder == null || decoder.HasState)
+                    {
+                        numBytes--;
+
+                        // The worst case is charsRemaining = 2 and UTF32Decoder holding onto 3 pending bytes. We need to read just
+                        // one byte in this case.
+                        if (_2BytesPerChar && numBytes > 2)
+                            numBytes -= 2;
+                    }
+                }
+
+                ReadOnlyMemory<byte> byteBuffer;
+                if (_isMemoryStream)
+                {
+                    Debug.Assert(_stream is MemoryStream);
+                    MemoryStream mStream = (MemoryStream)_stream;
+
+                    int position = mStream.InternalGetPosition();
+                    numBytes = mStream.InternalEmulateRead(numBytes);
+                    byteBuffer = new ReadOnlyMemory<byte>(mStream.InternalGetBuffer(), position, numBytes);
+                }
+                else
+                {
+                    _charBytes ??= new byte[MaxCharBytesSize];
+
+                    if (numBytes > MaxCharBytesSize)
+                    {
+                        numBytes = MaxCharBytesSize;
+                    }
+
+                    numBytes = await _stream.ReadAsync(_charBytes, 0, numBytes, cancellationToken).ConfigureAwait(false);
+                    byteBuffer = new ReadOnlyMemory<byte>(_charBytes, 0, numBytes);
+                }
+
+                if (byteBuffer.IsEmpty)
+                {
+                    break;
+                }
+
+                int charsRead = _decoder.GetChars(byteBuffer.Span, buffer.Span, flush: false);
+                buffer = buffer.Slice(charsRead);
+
+                totalCharsRead += charsRead;
+            }
+
+            // we may have read fewer than the number of characters requested if end of stream reached
+            // or if the encoding makes the char count too big for the buffer (e.g. fallback sequence)
+            return totalCharsRead;
+        }
+
         public virtual char[] ReadChars(int count)
         {
             if (count < 0)
@@ -436,6 +782,31 @@ namespace System.IO
 
             char[] chars = new char[count];
             int n = InternalReadChars(new Span<char>(chars));
+            if (n != count)
+            {
+                char[] copy = new char[n];
+                Buffer.BlockCopy(chars, 0, copy, 0, 2 * n); // sizeof(char)
+                chars = copy;
+            }
+
+            return chars;
+        }
+
+        public virtual async ValueTask<char[]> ReadCharsAsync(int count, CancellationToken cancellationToken = default)
+        {
+            if (count < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(count), SR.ArgumentOutOfRange_NeedNonNegNum);
+            }
+            ThrowIfDisposed();
+
+            if (count == 0)
+            {
+                return Array.Empty<char>();
+            }
+
+            char[] chars = new char[count];
+            int n = await InternalReadCharsAsync(new Memory<char>(chars), cancellationToken);
             if (n != count)
             {
                 char[] copy = new char[n];
@@ -469,10 +840,39 @@ namespace System.IO
             return _stream.Read(buffer, index, count);
         }
 
+        public virtual ValueTask<int> ReadAsync(byte[] buffer, int index, int count, CancellationToken cancellationToken = default)
+        {
+            if (buffer == null)
+            {
+                throw new ArgumentNullException(nameof(buffer), SR.ArgumentNull_Buffer);
+            }
+            if (index < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(index), SR.ArgumentOutOfRange_NeedNonNegNum);
+            }
+            if (count < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(count), SR.ArgumentOutOfRange_NeedNonNegNum);
+            }
+            if (buffer.Length - index < count)
+            {
+                throw new ArgumentException(SR.Argument_InvalidOffLen);
+            }
+            ThrowIfDisposed();
+
+            return new ValueTask<int>(_stream.ReadAsync(buffer, index, count, cancellationToken));
+        }
+
         public virtual int Read(Span<byte> buffer)
         {
             ThrowIfDisposed();
             return _stream.Read(buffer);
+        }
+
+        public virtual ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            ThrowIfDisposed();
+            return _stream.ReadAsync(buffer, cancellationToken);
         }
 
         public virtual byte[] ReadBytes(int count)
@@ -513,6 +913,44 @@ namespace System.IO
             return result;
         }
 
+        public virtual async ValueTask<byte[]> ReadBytesAsync(int count, CancellationToken cancellationToken = default)
+        {
+            if (count < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(count), SR.ArgumentOutOfRange_NeedNonNegNum);
+            }
+            ThrowIfDisposed();
+
+            if (count == 0)
+            {
+                return Array.Empty<byte>();
+            }
+
+            byte[] result = new byte[count];
+            int numRead = 0;
+            do
+            {
+                int n = await _stream.ReadAsync(result, numRead, count, cancellationToken).ConfigureAwait(false);
+                if (n == 0)
+                {
+                    break;
+                }
+
+                numRead += n;
+                count -= n;
+            } while (count > 0);
+
+            if (numRead != result.Length)
+            {
+                // Trim array.  This should happen on EOF & possibly net streams.
+                byte[] copy = new byte[numRead];
+                Buffer.BlockCopy(result, 0, copy, 0, numRead);
+                result = copy;
+            }
+
+            return result;
+        }
+
         private ReadOnlySpan<byte> InternalRead(int numBytes)
         {
             Debug.Assert(numBytes >= 2 && numBytes <= 16, "value of 1 should use ReadByte. value > 16 requires to change the minimal _buffer size");
@@ -531,6 +969,35 @@ namespace System.IO
                 do
                 {
                     int n = _stream.Read(_buffer, bytesRead, numBytes - bytesRead);
+                    if (n == 0)
+                    {
+                        throw Error.GetEndOfFile();
+                    }
+                    bytesRead += n;
+                } while (bytesRead < numBytes);
+
+                return _buffer;
+            }
+        }
+
+        private async ValueTask<ReadOnlyMemory<byte>> InternalReadAsync(int numBytes, CancellationToken cancellationToken = default)
+        {
+            Debug.Assert(numBytes >= 2 && numBytes <= 16, "value of 1 should use ReadByte. value > 16 requires to change the minimal _buffer size");
+
+            if (_isMemoryStream)
+            {
+                // read directly from MemoryStream buffer
+                Debug.Assert(_stream is MemoryStream);
+                return ((MemoryStream)_stream).InternalReadSpan(numBytes).ToArray();
+            }
+            else
+            {
+                ThrowIfDisposed();
+
+                int bytesRead = 0;
+                do
+                {
+                    int n = await _stream.ReadAsync(_buffer, bytesRead, numBytes - bytesRead, cancellationToken).ConfigureAwait(false);
                     if (n == 0)
                     {
                         throw Error.GetEndOfFile();
@@ -584,6 +1051,44 @@ namespace System.IO
             } while (bytesRead < numBytes);
         }
 
+        protected virtual async ValueTask FillBufferAsync(int numBytes, CancellationToken cancellationToken = default)
+        {
+            if (numBytes < 0 || numBytes > _buffer.Length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(numBytes), SR.ArgumentOutOfRange_BinaryReaderFillBuffer);
+            }
+
+            int bytesRead = 0;
+            int n = 0;
+
+            ThrowIfDisposed();
+
+            // Need to find a good threshold for calling ReadByte() repeatedly
+            // vs. calling Read(byte[], int, int) for both buffered & unbuffered
+            // streams.
+            if (numBytes == 1)
+            {
+                n = await _stream.ReadByteAsync(cancellationToken);
+                if (n == -1)
+                {
+                    throw Error.GetEndOfFile();
+                }
+
+                _buffer[0] = (byte)n;
+                return;
+            }
+
+            do
+            {
+                n = await _stream.ReadAsync(_buffer, bytesRead, numBytes - bytesRead, cancellationToken).ConfigureAwait(false);
+                if (n == 0)
+                {
+                    throw Error.GetEndOfFile();
+                }
+                bytesRead += n;
+            } while (bytesRead < numBytes);
+        }
+
         protected internal int Read7BitEncodedInt()
         {
             // Read out an Int32 7 bits at a time.  The high bit
@@ -602,6 +1107,30 @@ namespace System.IO
 
                 // ReadByte handles end of stream cases for us.
                 b = ReadByte();
+                count |= (b & 0x7F) << shift;
+                shift += 7;
+            } while ((b & 0x80) != 0);
+            return count;
+        }
+
+        protected internal async ValueTask<int> Read7BitEncodedIntAsync(CancellationToken cancellationToken = default)
+        {
+            // Read out an Int32 7 bits at a time.  The high bit
+            // of the byte when on means to continue reading more bytes.
+            int count = 0;
+            int shift = 0;
+            byte b;
+            do
+            {
+                // Check for a corrupted stream.  Read a max of 5 bytes.
+                // In a future version, add a DataFormatException.
+                if (shift == 5 * 7)  // 5 bytes max per Int32, shift += 7
+                {
+                    throw new FormatException(SR.Format_Bad7BitInt32);
+                }
+
+                // ReadByte handles end of stream cases for us.
+                b = await ReadByteAsync(cancellationToken);
                 count |= (b & 0x7F) << shift;
                 shift += 7;
             } while ((b & 0x80) != 0);
