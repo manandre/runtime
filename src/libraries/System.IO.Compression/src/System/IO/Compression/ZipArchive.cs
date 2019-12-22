@@ -9,10 +9,12 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace System.IO.Compression
 {
-    public class ZipArchive : IDisposable
+    public class ZipArchive : IDisposable, IAsyncDisposable
     {
         private readonly Stream _archiveStream;
         private ZipArchiveEntry? _archiveStreamOwner;
@@ -318,6 +320,37 @@ namespace System.IO.Compression
         }
 
         /// <summary>
+        /// Asynchronously finishes writing the archive and releases all resources used by the ZipArchive object, unless the object was constructed with leaveOpen as true. Any streams from opened entries in the ZipArchive still open will throw exceptions on subsequent writes, as the underlying streams will have been closed.
+        /// </summary>
+        /// <returns></returns>
+        public virtual async ValueTask DisposeAsync()
+        {
+            // Same logic as Dispose(true), except with async counterparts.
+            if (!_isDisposed)
+            {
+                try
+                {
+                    switch (_mode)
+                    {
+                        case ZipArchiveMode.Read:
+                            break;
+                        case ZipArchiveMode.Create:
+                        case ZipArchiveMode.Update:
+                        default:
+                            Debug.Assert(_mode == ZipArchiveMode.Update || _mode == ZipArchiveMode.Create);
+                            await WriteFileAsync().ConfigureAwait(false);
+                            break;
+                    }
+                }
+                finally
+                {
+                    await CloseStreamsAsync().ConfigureAwait(false);
+                    _isDisposed = true;
+                }
+            }
+        }
+
+        /// <summary>
         /// Retrieves a wrapper for the file entry in the archive with the specified name. Names are compared using ordinal comparison. If there are multiple entries in the archive with the specified name, the first one found will be returned.
         /// </summary>
         /// <exception cref="ArgumentException">entryName is a zero-length string.</exception>
@@ -475,6 +508,25 @@ namespace System.IO.Compression
                 // the temporary copy that we needed
                 if (_backingStream != null)
                     _archiveStream.Dispose();
+            }
+        }
+
+        private async ValueTask CloseStreamsAsync()
+        {
+            if (!_leaveOpen)
+            {
+                await _archiveStream.DisposeAsync().ConfigureAwait(false);
+                if (_backingStream != null)
+                    await _backingStream.DisposeAsync().ConfigureAwait(false);
+                _archiveReader?.Dispose();
+            }
+            else
+            {
+                // if _backingStream isn't null, that means we assigned the original stream they passed
+                // us to _backingStream (which they requested we leave open), and _archiveStream was
+                // the temporary copy that we needed
+                if (_backingStream != null)
+                    await _archiveStream.DisposeAsync().ConfigureAwait(false);
             }
         }
 
@@ -673,6 +725,44 @@ namespace System.IO.Compression
             WriteArchiveEpilogue(startOfCentralDirectory, sizeOfCentralDirectory);
         }
 
+        private async ValueTask WriteFileAsync(CancellationToken cancellationToken = default)
+        {
+            // if we are in create mode, we always set readEntries to true in Init
+            // if we are in update mode, we call EnsureCentralDirectoryRead, which sets readEntries to true
+            Debug.Assert(_readEntries);
+
+            if (_mode == ZipArchiveMode.Update)
+            {
+                List<ZipArchiveEntry> markedForDelete = new List<ZipArchiveEntry>();
+                foreach (ZipArchiveEntry entry in _entries)
+                {
+                    if (!await entry.LoadLocalHeaderExtraFieldAndCompressedBytesIfNeededAsync(cancellationToken))
+                        markedForDelete.Add(entry);
+                }
+                foreach (ZipArchiveEntry entry in markedForDelete)
+                    entry.Delete();
+
+                _archiveStream.Seek(0, SeekOrigin.Begin);
+                _archiveStream.SetLength(0);
+            }
+
+            foreach (ZipArchiveEntry entry in _entries)
+            {
+                await entry.WriteAndFinishLocalEntryAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            long startOfCentralDirectory = _archiveStream.Position;
+
+            foreach (ZipArchiveEntry entry in _entries)
+            {
+                await entry.WriteCentralDirectoryFileHeaderAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            long sizeOfCentralDirectory = _archiveStream.Position - startOfCentralDirectory;
+
+            await WriteArchiveEpilogueAsync(startOfCentralDirectory, sizeOfCentralDirectory, cancellationToken).ConfigureAwait(false);
+        }
+
         // writes eocd, and if needed, zip 64 eocd, zip64 eocd locator
         // should only throw an exception in extremely exceptional cases because it is called from dispose
         private void WriteArchiveEpilogue(long startOfCentralDirectory, long sizeOfCentralDirectory)
@@ -694,6 +784,27 @@ namespace System.IO.Compression
 
             // write normal eocd
             ZipEndOfCentralDirectoryBlock.WriteBlock(_archiveStream, _entries.Count, startOfCentralDirectory, sizeOfCentralDirectory, _archiveComment);
+        }
+
+        private async ValueTask WriteArchiveEpilogueAsync(long startOfCentralDirectory, long sizeOfCentralDirectory, CancellationToken cancellationToken = default)
+        {
+            // determine if we need Zip 64
+            if (startOfCentralDirectory >= uint.MaxValue
+                || sizeOfCentralDirectory >= uint.MaxValue
+                || _entries.Count >= ZipHelper.Mask16Bit
+#if DEBUG_FORCE_ZIP64
+                || _forceZip64
+#endif
+                )
+            {
+                // if we need zip 64, write zip 64 eocd and locator
+                long zip64EOCDRecordStart = _archiveStream.Position;
+                await Zip64EndOfCentralDirectoryRecord.WriteBlockAsync(_archiveStream, _entries.Count, startOfCentralDirectory, sizeOfCentralDirectory, cancellationToken).ConfigureAwait(false);
+                await Zip64EndOfCentralDirectoryLocator.WriteBlockAsync(_archiveStream, zip64EOCDRecordStart, cancellationToken).ConfigureAwait(false);
+            }
+
+            // write normal eocd
+            await ZipEndOfCentralDirectoryBlock.WriteBlockAsync(_archiveStream, _entries.Count, startOfCentralDirectory, sizeOfCentralDirectory, _archiveComment, cancellationToken).ConfigureAwait(false);
         }
     }
 }

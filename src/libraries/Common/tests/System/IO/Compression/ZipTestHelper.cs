@@ -152,7 +152,8 @@ namespace System.IO.Compression.Tests
             using (ZipArchive archive = new ZipArchive(archiveFile, mode))
             {
                 List<FileData> files = FileData.InPath(directory);
-                Assert.All<FileData>(files, (file) => {
+                Assert.All<FileData>(files, (file) =>
+                {
                     count++;
                     string entryName = file.FullName;
                     if (file.IsFolder)
@@ -303,64 +304,72 @@ namespace System.IO.Compression.Tests
 
         /// <param name="useSpansForWriting">Tests the Span overloads of Write</param>
         /// <param name="writeInChunks">Writes in chunks of 5 to test Write with a nonzero offset</param>
-        public static async Task CreateFromDir(string directory, Stream archiveStream, ZipArchiveMode mode, bool useSpansForWriting = false, bool writeInChunks = false)
+        public static async Task CreateFromDir(string directory, Stream archiveStream, ZipArchiveMode mode, bool useSpansForWriting = false, bool writeInChunks = false, bool disposeAsync = false)
         {
             var files = FileData.InPath(directory);
-            using (ZipArchive archive = new ZipArchive(archiveStream, mode, true))
+            ZipArchive archive = new ZipArchive(archiveStream, mode, true);
+
+            foreach (var i in files)
             {
-                foreach (var i in files)
+                if (i.IsFolder)
                 {
-                    if (i.IsFolder)
-                    {
-                        string entryName = i.FullName;
+                    string entryName = i.FullName;
 
-                        ZipArchiveEntry e = archive.CreateEntry(entryName.Replace('\\', '/') + "/");
-                        e.LastWriteTime = i.LastModifiedDate;
-                    }
+                    ZipArchiveEntry e = archive.CreateEntry(entryName.Replace('\\', '/') + "/");
+                    e.LastWriteTime = i.LastModifiedDate;
                 }
+            }
 
-                foreach (var i in files)
+            foreach (var i in files)
+            {
+                if (i.IsFile)
                 {
-                    if (i.IsFile)
+                    string entryName = i.FullName;
+
+                    var installStream = await StreamHelpers.CreateTempCopyStream(Path.Combine(i.OrigFolder, i.FullName));
+
+                    if (installStream != null)
                     {
-                        string entryName = i.FullName;
-
-                        var installStream = await StreamHelpers.CreateTempCopyStream(Path.Combine(i.OrigFolder, i.FullName));
-
-                        if (installStream != null)
+                        ZipArchiveEntry e = archive.CreateEntry(entryName.Replace('\\', '/'));
+                        e.LastWriteTime = i.LastModifiedDate;
+                        using (Stream entryStream = e.Open())
                         {
-                            ZipArchiveEntry e = archive.CreateEntry(entryName.Replace('\\', '/'));
-                            e.LastWriteTime = i.LastModifiedDate;
-                            using (Stream entryStream = e.Open())
+                            int bytesRead;
+                            var buffer = new byte[1024];
+                            if (useSpansForWriting)
                             {
-                                int bytesRead;
-                                var buffer = new byte[1024];
-                                if (useSpansForWriting)
+                                while ((bytesRead = installStream.Read(new Span<byte>(buffer))) != 0)
                                 {
-                                    while ((bytesRead = installStream.Read(new Span<byte>(buffer))) != 0)
-                                    {
-                                        entryStream.Write(new ReadOnlySpan<byte>(buffer, 0, bytesRead));
-                                    }
+                                    entryStream.Write(new ReadOnlySpan<byte>(buffer, 0, bytesRead));
                                 }
-                                else if (writeInChunks)
+                            }
+                            else if (writeInChunks)
+                            {
+                                while ((bytesRead = installStream.Read(buffer, 0, buffer.Length)) != 0)
                                 {
-                                    while ((bytesRead = installStream.Read(buffer, 0, buffer.Length)) != 0)
-                                    {
-                                        for (int k = 0; k < bytesRead; k += 5)
-                                            entryStream.Write(buffer, k, Math.Min(5, bytesRead - k));
-                                    }
+                                    for (int k = 0; k < bytesRead; k += 5)
+                                        entryStream.Write(buffer, k, Math.Min(5, bytesRead - k));
                                 }
-                                else
+                            }
+                            else
+                            {
+                                while ((bytesRead = installStream.Read(buffer, 0, buffer.Length)) != 0)
                                 {
-                                    while ((bytesRead = installStream.Read(buffer, 0, buffer.Length)) != 0)
-                                    {
-                                        entryStream.Write(buffer, 0, bytesRead);
-                                    }
+                                    entryStream.Write(buffer, 0, bytesRead);
                                 }
                             }
                         }
                     }
                 }
+            }
+
+            if (disposeAsync)
+            {
+                await archive.DisposeAsync();
+            }
+            else
+            {
+                archive.Dispose();
             }
         }
 

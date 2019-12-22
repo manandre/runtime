@@ -4,6 +4,8 @@
 
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace System.IO.Compression
 {
@@ -29,6 +31,14 @@ namespace System.IO.Compression
             writer.Write(Tag);
             writer.Write(Size);
             writer.Write(Data);
+        }
+
+        public async ValueTask WriteBlockAsync(Stream stream, CancellationToken cancellationToken = default)
+        {
+            BinaryWriter writer = new BinaryWriter(stream);
+            await writer.WriteAsync(Tag, cancellationToken).ConfigureAwait(false);
+            await writer.WriteAsync(Size, cancellationToken).ConfigureAwait(false);
+            await writer.WriteAsync(Data, cancellationToken).ConfigureAwait(false);
         }
 
         // shouldn't ever read the byte at position endExtraField
@@ -81,6 +91,12 @@ namespace System.IO.Compression
         {
             foreach (ZipGenericExtraField field in fields)
                 field.WriteBlock(stream);
+        }
+
+        public static async ValueTask WriteAllBlocksAsync(List<ZipGenericExtraField> fields, Stream stream, CancellationToken cancellationToken = default)
+        {
+            foreach (ZipGenericExtraField field in fields)
+                await field.WriteBlockAsync(stream, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -284,6 +300,17 @@ namespace System.IO.Compression
             if (_localHeaderOffset != null) writer.Write(_localHeaderOffset.Value);
             if (_startDiskNumber != null) writer.Write(_startDiskNumber.Value);
         }
+
+        public async ValueTask WriteBlockAsync(Stream stream, CancellationToken cancellationToken = default)
+        {
+            BinaryWriter writer = new BinaryWriter(stream);
+            await writer.WriteAsync(TagConstant, cancellationToken).ConfigureAwait(false);
+            await writer.WriteAsync(_size, cancellationToken).ConfigureAwait(false);
+            if (_uncompressedSize != null) await writer.WriteAsync(_uncompressedSize.Value, cancellationToken).ConfigureAwait(false);
+            if (_compressedSize != null) await writer.WriteAsync(_compressedSize.Value, cancellationToken).ConfigureAwait(false);
+            if (_localHeaderOffset != null) await writer.WriteAsync(_localHeaderOffset.Value, cancellationToken).ConfigureAwait(false);
+            if (_startDiskNumber != null) await writer.WriteAsync(_startDiskNumber.Value, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     internal struct Zip64EndOfCentralDirectoryLocator
@@ -317,6 +344,15 @@ namespace System.IO.Compression
             writer.Write((uint)0); // number of disk with start of zip64 eocd
             writer.Write(zip64EOCDRecordStart);
             writer.Write((uint)1); // total number of disks
+        }
+
+        public static async ValueTask WriteBlockAsync(Stream stream, long zip64EOCDRecordStart, CancellationToken cancellationToken = default)
+        {
+            BinaryWriter writer = new BinaryWriter(stream);
+            await writer.WriteAsync(SignatureConstant, cancellationToken).ConfigureAwait(false);
+            await writer.WriteAsync((uint)0, cancellationToken).ConfigureAwait(false); // number of disk with start of zip64 eocd
+            await writer.WriteAsync(zip64EOCDRecordStart, cancellationToken).ConfigureAwait(false);
+            await writer.WriteAsync((uint)1, cancellationToken).ConfigureAwait(false); // total number of disks
         }
     }
 
@@ -370,6 +406,23 @@ namespace System.IO.Compression
             writer.Write(numberOfEntries); // number of entries total
             writer.Write(sizeOfCentralDirectory);
             writer.Write(startOfCentralDirectory);
+        }
+
+        public static async ValueTask WriteBlockAsync(Stream stream, long numberOfEntries, long startOfCentralDirectory, long sizeOfCentralDirectory, CancellationToken cancellationToken = default)
+        {
+            BinaryWriter writer = new BinaryWriter(stream);
+
+            // write Zip 64 EOCD record
+            await writer.WriteAsync(SignatureConstant, cancellationToken).ConfigureAwait(false);
+            await writer.WriteAsync(NormalSize, cancellationToken).ConfigureAwait(false);
+            await writer.WriteAsync((ushort)ZipVersionNeededValues.Zip64, cancellationToken).ConfigureAwait(false); // version needed is 45 for zip 64 support
+            await writer.WriteAsync((ushort)ZipVersionNeededValues.Zip64, cancellationToken).ConfigureAwait(false); // version made by: high byte is 0 for MS DOS, low byte is version needed
+            await writer.WriteAsync((uint)0, cancellationToken).ConfigureAwait(false); // number of this disk is 0
+            await writer.WriteAsync((uint)0, cancellationToken).ConfigureAwait(false); // number of disk with start of central directory is 0
+            await writer.WriteAsync(numberOfEntries, cancellationToken).ConfigureAwait(false); // number of entries on this disk
+            await writer.WriteAsync(numberOfEntries, cancellationToken).ConfigureAwait(false); // number of entries total
+            await writer.WriteAsync(sizeOfCentralDirectory, cancellationToken).ConfigureAwait(false);
+            await writer.WriteAsync(startOfCentralDirectory, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -689,6 +742,33 @@ namespace System.IO.Compression
             writer.Write(archiveComment != null ? (ushort)archiveComment.Length : (ushort)0); // zip file comment length
             if (archiveComment != null)
                 writer.Write(archiveComment);
+        }
+
+        public static async ValueTask WriteBlockAsync(Stream stream, long numberOfEntries, long startOfCentralDirectory, long sizeOfCentralDirectory, byte[]? archiveComment, CancellationToken cancellationToken = default)
+        {
+            BinaryWriter writer = new BinaryWriter(stream);
+
+            ushort numberOfEntriesTruncated = numberOfEntries > ushort.MaxValue ?
+                                                        ZipHelper.Mask16Bit : (ushort)numberOfEntries;
+            uint startOfCentralDirectoryTruncated = startOfCentralDirectory > uint.MaxValue ?
+                                                        ZipHelper.Mask32Bit : (uint)startOfCentralDirectory;
+            uint sizeOfCentralDirectoryTruncated = sizeOfCentralDirectory > uint.MaxValue ?
+                                                        ZipHelper.Mask32Bit : (uint)sizeOfCentralDirectory;
+
+            await writer.WriteAsync(SignatureConstant, cancellationToken).ConfigureAwait(false);
+            await writer.WriteAsync((ushort)0, cancellationToken).ConfigureAwait(false); // number of this disk
+            await writer.WriteAsync((ushort)0, cancellationToken).ConfigureAwait(false); // number of disk with start of CD
+            await writer.WriteAsync(numberOfEntriesTruncated, cancellationToken).ConfigureAwait(false); // number of entries on this disk's cd
+            await writer.WriteAsync(numberOfEntriesTruncated, cancellationToken).ConfigureAwait(false); // number of entries in entire CD
+            await writer.WriteAsync(sizeOfCentralDirectoryTruncated, cancellationToken).ConfigureAwait(false);
+            await writer.WriteAsync(startOfCentralDirectoryTruncated, cancellationToken).ConfigureAwait(false);
+
+            // Should be valid because of how we read archiveComment in TryReadBlock:
+            Debug.Assert((archiveComment == null) || (archiveComment.Length <= ZipFileCommentMaxLength));
+
+            await writer.WriteAsync(archiveComment != null ? (ushort)archiveComment.Length : (ushort)0, cancellationToken).ConfigureAwait(false); // zip file comment length
+            if (archiveComment != null)
+                await writer.WriteAsync(archiveComment, cancellationToken).ConfigureAwait(false);
         }
 
         public static bool TryReadBlock(BinaryReader reader, out ZipEndOfCentralDirectoryBlock eocdBlock)

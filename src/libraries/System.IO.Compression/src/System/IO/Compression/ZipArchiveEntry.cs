@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace System.IO.Compression
 {
@@ -445,6 +447,13 @@ namespace System.IO.Compression
             UnloadStreams();
         }
 
+        internal async ValueTask WriteAndFinishLocalEntryAsync(CancellationToken cancellationToken = default)
+        {
+            await CloseStreamsAsync().ConfigureAwait(false);
+            await WriteLocalFileHeaderAndDataIfNeededAsync(cancellationToken).ConfigureAwait(false);
+            await UnloadStreamsAsync().ConfigureAwait(false);
+        }
+
         // should only throw an exception in extremely exceptional cases because it is called from dispose
         internal void WriteCentralDirectoryFileHeader()
         {
@@ -550,6 +559,110 @@ namespace System.IO.Compression
                 writer.Write(_fileComment);
         }
 
+        internal async ValueTask WriteCentralDirectoryFileHeaderAsync(CancellationToken cancellationToken = default)
+        {
+            // This part is simple, because we should definitely know the sizes by this time
+            BinaryWriter writer = new BinaryWriter(_archive.ArchiveStream);
+
+            // _entryname only gets set when we read in or call moveTo. MoveTo does a check, and
+            // reading in should not be able to produce an entryname longer than ushort.MaxValue
+            Debug.Assert(_storedEntryNameBytes.Length <= ushort.MaxValue);
+
+            // decide if we need the Zip64 extra field:
+            Zip64ExtraField zip64ExtraField = default;
+            uint compressedSizeTruncated, uncompressedSizeTruncated, offsetOfLocalHeaderTruncated;
+
+            bool zip64Needed = false;
+
+            if (SizesTooLarge()
+#if DEBUG_FORCE_ZIP64
+                || _archive._forceZip64
+#endif
+                )
+            {
+                zip64Needed = true;
+                compressedSizeTruncated = ZipHelper.Mask32Bit;
+                uncompressedSizeTruncated = ZipHelper.Mask32Bit;
+
+                // If we have one of the sizes, the other must go in there as speced for LH, but not necessarily for CH, but we do it anyways
+                zip64ExtraField.CompressedSize = _compressedSize;
+                zip64ExtraField.UncompressedSize = _uncompressedSize;
+            }
+            else
+            {
+                compressedSizeTruncated = (uint)_compressedSize;
+                uncompressedSizeTruncated = (uint)_uncompressedSize;
+            }
+
+
+            if (_offsetOfLocalHeader > uint.MaxValue
+#if DEBUG_FORCE_ZIP64
+                || _archive._forceZip64
+#endif
+                )
+            {
+                zip64Needed = true;
+                offsetOfLocalHeaderTruncated = ZipHelper.Mask32Bit;
+
+                // If we have one of the sizes, the other must go in there as speced for LH, but not necessarily for CH, but we do it anyways
+                zip64ExtraField.LocalHeaderOffset = _offsetOfLocalHeader;
+            }
+            else
+            {
+                offsetOfLocalHeaderTruncated = (uint)_offsetOfLocalHeader;
+            }
+
+            if (zip64Needed)
+                VersionToExtractAtLeast(ZipVersionNeededValues.Zip64);
+
+            // determine if we can fit zip64 extra field and original extra fields all in
+            int bigExtraFieldLength = (zip64Needed ? zip64ExtraField.TotalSize : 0)
+                                      + (_cdUnknownExtraFields != null ? ZipGenericExtraField.TotalSize(_cdUnknownExtraFields) : 0);
+            ushort extraFieldLength;
+            if (bigExtraFieldLength > ushort.MaxValue)
+            {
+                extraFieldLength = (ushort)(zip64Needed ? zip64ExtraField.TotalSize : 0);
+                _cdUnknownExtraFields = null;
+            }
+            else
+            {
+                extraFieldLength = (ushort)bigExtraFieldLength;
+            }
+
+            await writer.WriteAsync(ZipCentralDirectoryFileHeader.SignatureConstant, cancellationToken).ConfigureAwait(false);      // Central directory file header signature  (4 bytes)
+            await writer.WriteAsync((byte)_versionMadeBySpecification, cancellationToken).ConfigureAwait(false);                    // Version made by Specification (version)  (1 byte)
+            await writer.WriteAsync((byte)CurrentZipPlatform, cancellationToken).ConfigureAwait(false);                             // Version made by Compatibility (type)     (1 byte)
+            await writer.WriteAsync((ushort)_versionToExtract, cancellationToken).ConfigureAwait(false);                            // Minimum version needed to extract        (2 bytes)
+            await writer.WriteAsync((ushort)_generalPurposeBitFlag, cancellationToken).ConfigureAwait(false);                       // General Purpose bit flag                 (2 bytes)
+            await writer.WriteAsync((ushort)CompressionMethod, cancellationToken).ConfigureAwait(false);                            // The Compression method                   (2 bytes)
+            await writer.WriteAsync(ZipHelper.DateTimeToDosTime(_lastModified.DateTime), cancellationToken).ConfigureAwait(false);  // File last modification time and date     (4 bytes)
+            await writer.WriteAsync(_crc32, cancellationToken).ConfigureAwait(false);                                               // CRC-32                                   (4 bytes)
+            await writer.WriteAsync(compressedSizeTruncated, cancellationToken).ConfigureAwait(false);                              // Compressed Size                          (4 bytes)
+            await writer.WriteAsync(uncompressedSizeTruncated, cancellationToken).ConfigureAwait(false);                            // Uncompressed Size                        (4 bytes)
+            await writer.WriteAsync((ushort)_storedEntryNameBytes.Length, cancellationToken).ConfigureAwait(false);                 // File Name Length                         (2 bytes)
+            await writer.WriteAsync(extraFieldLength, cancellationToken).ConfigureAwait(false);                                     // Extra Field Length                       (2 bytes)
+
+            // This should hold because of how we read it originally in ZipCentralDirectoryFileHeader:
+            Debug.Assert((_fileComment == null) || (_fileComment.Length <= ushort.MaxValue));
+
+            await writer.WriteAsync(_fileComment != null ? (ushort)_fileComment.Length : (ushort)0, cancellationToken).ConfigureAwait(false); // file comment length
+            await writer.WriteAsync((ushort)0, cancellationToken).ConfigureAwait(false); // disk number start
+            await writer.WriteAsync((ushort)0, cancellationToken).ConfigureAwait(false); // internal file attributes
+            await writer.WriteAsync(_externalFileAttr, cancellationToken).ConfigureAwait(false); // external file attributes
+            await writer.WriteAsync(offsetOfLocalHeaderTruncated, cancellationToken).ConfigureAwait(false); // offset of local header
+
+            await writer.WriteAsync(_storedEntryNameBytes, cancellationToken).ConfigureAwait(false);
+
+            // write extra fields
+            if (zip64Needed)
+                await zip64ExtraField.WriteBlockAsync(_archive.ArchiveStream, cancellationToken).ConfigureAwait(false);
+            if (_cdUnknownExtraFields != null)
+                await ZipGenericExtraField.WriteAllBlocksAsync(_cdUnknownExtraFields, _archive.ArchiveStream, cancellationToken).ConfigureAwait(false);
+
+            if (_fileComment != null)
+                await writer.WriteAsync(_fileComment, cancellationToken).ConfigureAwait(false);
+        }
+
         // returns false if fails, will get called on every entry before closing in update mode
         // can throw InvalidDataException
         internal bool LoadLocalHeaderExtraFieldAndCompressedBytesIfNeeded()
@@ -584,6 +697,43 @@ namespace System.IO.Compression
                     ZipHelper.ReadBytes(_archive.ArchiveStream, _compressedBytes[i], MaxSingleBufferSize);
                 }
                 ZipHelper.ReadBytes(_archive.ArchiveStream, _compressedBytes[_compressedBytes.Length - 1], (int)(_compressedSize % MaxSingleBufferSize));
+            }
+
+            return true;
+        }
+
+        internal async ValueTask<bool> LoadLocalHeaderExtraFieldAndCompressedBytesIfNeededAsync(CancellationToken cancellationToken = default)
+        {
+            // we should have made this exact call in _archive.Init through ThrowIfOpenable
+            Debug.Assert(IsOpenable(false, true, out string? message));
+
+            // load local header's extra fields. it will be null if we couldn't read for some reason
+            if (_originallyInArchive)
+            {
+                _archive.ArchiveStream.Seek(_offsetOfLocalHeader, SeekOrigin.Begin);
+
+                Debug.Assert(_archive.ArchiveReader != null);
+                _lhUnknownExtraFields = ZipLocalFileHeader.GetExtraFields(_archive.ArchiveReader);
+            }
+
+            if (!_everOpenedForWrite && _originallyInArchive)
+            {
+                // we know that it is openable at this point
+
+                _compressedBytes = new byte[(_compressedSize / MaxSingleBufferSize) + 1][];
+                for (int i = 0; i < _compressedBytes.Length - 1; i++)
+                {
+                    _compressedBytes[i] = new byte[MaxSingleBufferSize];
+                }
+                _compressedBytes[_compressedBytes.Length - 1] = new byte[_compressedSize % MaxSingleBufferSize];
+
+                _archive.ArchiveStream.Seek(OffsetOfCompressedData, SeekOrigin.Begin);
+
+                for (int i = 0; i < _compressedBytes.Length - 1; i++)
+                {
+                    await ZipHelper.ReadBytesAsync(_archive.ArchiveStream, _compressedBytes[i], MaxSingleBufferSize, cancellationToken).ConfigureAwait(false);
+                }
+                await ZipHelper.ReadBytesAsync(_archive.ArchiveStream, _compressedBytes[_compressedBytes.Length - 1], (int)(_compressedSize % MaxSingleBufferSize), cancellationToken).ConfigureAwait(false);
             }
 
             return true;
@@ -899,6 +1049,110 @@ namespace System.IO.Compression
             return zip64Used;
         }
 
+        private async ValueTask<bool> WriteLocalFileHeaderAsync(bool isEmptyFile, CancellationToken cancellationToken = default)
+        {
+            BinaryWriter writer = new BinaryWriter(_archive.ArchiveStream);
+
+            // _entryname only gets set when we read in or call moveTo. MoveTo does a check, and
+            // reading in should not be able to produce an entryname longer than ushort.MaxValue
+            Debug.Assert(_storedEntryNameBytes.Length <= ushort.MaxValue);
+
+            // decide if we need the Zip64 extra field:
+            Zip64ExtraField zip64ExtraField = default;
+            bool zip64Used = false;
+            uint compressedSizeTruncated, uncompressedSizeTruncated;
+
+            // if we already know that we have an empty file don't worry about anything, just do a straight shot of the header
+            if (isEmptyFile)
+            {
+                CompressionMethod = CompressionMethodValues.Stored;
+                compressedSizeTruncated = 0;
+                uncompressedSizeTruncated = 0;
+                Debug.Assert(_compressedSize == 0);
+                Debug.Assert(_uncompressedSize == 0);
+                Debug.Assert(_crc32 == 0);
+            }
+            else
+            {
+                // if we have a non-seekable stream, don't worry about sizes at all, and just set the right bit
+                // if we are using the data descriptor, then sizes and crc should be set to 0 in the header
+                if (_archive.Mode == ZipArchiveMode.Create && _archive.ArchiveStream.CanSeek == false && !isEmptyFile)
+                {
+                    _generalPurposeBitFlag |= BitFlagValues.DataDescriptor;
+                    zip64Used = false;
+                    compressedSizeTruncated = 0;
+                    uncompressedSizeTruncated = 0;
+                    // the crc should not have been set if we are in create mode, but clear it just to be sure
+                    Debug.Assert(_crc32 == 0);
+                }
+                else // if we are not in streaming mode, we have to decide if we want to write zip64 headers
+                {
+                    // We are in seekable mode so we will not need to write a data descriptor
+                    _generalPurposeBitFlag &= ~BitFlagValues.DataDescriptor;
+                    if (SizesTooLarge()
+#if DEBUG_FORCE_ZIP64
+                        || (_archive._forceZip64 && _archive.Mode == ZipArchiveMode.Update)
+#endif
+                        )
+                    {
+                        zip64Used = true;
+                        compressedSizeTruncated = ZipHelper.Mask32Bit;
+                        uncompressedSizeTruncated = ZipHelper.Mask32Bit;
+
+                        // prepare Zip64 extra field object. If we have one of the sizes, the other must go in there
+                        zip64ExtraField.CompressedSize = _compressedSize;
+                        zip64ExtraField.UncompressedSize = _uncompressedSize;
+
+                        VersionToExtractAtLeast(ZipVersionNeededValues.Zip64);
+                    }
+                    else
+                    {
+                        zip64Used = false;
+                        compressedSizeTruncated = (uint)_compressedSize;
+                        uncompressedSizeTruncated = (uint)_uncompressedSize;
+                    }
+                }
+            }
+
+            // save offset
+            _offsetOfLocalHeader = writer.BaseStream.Position;
+
+            // calculate extra field. if zip64 stuff + original extraField aren't going to fit, dump the original extraField, because this is more important
+            int bigExtraFieldLength = (zip64Used ? zip64ExtraField.TotalSize : 0)
+                                      + (_lhUnknownExtraFields != null ? ZipGenericExtraField.TotalSize(_lhUnknownExtraFields) : 0);
+            ushort extraFieldLength;
+            if (bigExtraFieldLength > ushort.MaxValue)
+            {
+                extraFieldLength = (ushort)(zip64Used ? zip64ExtraField.TotalSize : 0);
+                _lhUnknownExtraFields = null;
+            }
+            else
+            {
+                extraFieldLength = (ushort)bigExtraFieldLength;
+            }
+
+            // write header
+            await writer.WriteAsync(ZipLocalFileHeader.SignatureConstant, cancellationToken).ConfigureAwait(false);
+            await writer.WriteAsync((ushort)_versionToExtract, cancellationToken).ConfigureAwait(false);
+            await writer.WriteAsync((ushort)_generalPurposeBitFlag, cancellationToken).ConfigureAwait(false);
+            await writer.WriteAsync((ushort)CompressionMethod, cancellationToken).ConfigureAwait(false);
+            await writer.WriteAsync(ZipHelper.DateTimeToDosTime(_lastModified.DateTime), cancellationToken).ConfigureAwait(false); // uint
+            await writer.WriteAsync(_crc32, cancellationToken).ConfigureAwait(false); // uint
+            await writer.WriteAsync(compressedSizeTruncated, cancellationToken).ConfigureAwait(false); // uint
+            await writer.WriteAsync(uncompressedSizeTruncated, cancellationToken).ConfigureAwait(false); // uint
+            await writer.WriteAsync((ushort)_storedEntryNameBytes.Length, cancellationToken).ConfigureAwait(false);
+            await writer.WriteAsync(extraFieldLength, cancellationToken).ConfigureAwait(false); // ushort
+
+            await writer.WriteAsync(_storedEntryNameBytes, cancellationToken).ConfigureAwait(false);
+
+            if (zip64Used)
+                await zip64ExtraField.WriteBlockAsync(_archive.ArchiveStream, cancellationToken).ConfigureAwait(false);
+            if (_lhUnknownExtraFields != null)
+                await ZipGenericExtraField.WriteAllBlocksAsync(_lhUnknownExtraFields, _archive.ArchiveStream, cancellationToken).ConfigureAwait(false);
+
+            return zip64Used;
+        }
+
         private void WriteLocalFileHeaderAndDataIfNeeded()
         {
             // _storedUncompressedData gets frozen here, and is what gets written to the file
@@ -947,6 +1201,58 @@ namespace System.IO.Compression
                 {
                     _everOpenedForWrite = true;
                     WriteLocalFileHeader(isEmptyFile: true);
+                }
+            }
+        }
+
+        private async ValueTask WriteLocalFileHeaderAndDataIfNeededAsync(CancellationToken cancellationToken = default)
+        {
+            // _storedUncompressedData gets frozen here, and is what gets written to the file
+            if (_storedUncompressedData != null || _compressedBytes != null)
+            {
+                if (_storedUncompressedData != null)
+                {
+                    _uncompressedSize = _storedUncompressedData.Length;
+
+                    //The compressor fills in CRC and sizes
+                    //The DirectToArchiveWriterStream writes headers and such
+                    using (Stream entryWriter = new DirectToArchiveWriterStream(
+                                                    GetDataCompressor(_archive.ArchiveStream, true, null),
+                                                    this))
+                    {
+                        _storedUncompressedData.Seek(0, SeekOrigin.Begin);
+                        await _storedUncompressedData.CopyToAsync(entryWriter, cancellationToken).ConfigureAwait(false);
+                        await _storedUncompressedData.DisposeAsync().ConfigureAwait(false);
+                        _storedUncompressedData = null;
+                    }
+                }
+                else
+                {
+                    if (_uncompressedSize == 0)
+                    {
+                        // reset size to ensure proper central directory size header
+                        _compressedSize = 0;
+                    }
+
+                    await WriteLocalFileHeaderAsync(isEmptyFile: _uncompressedSize == 0, cancellationToken).ConfigureAwait(false);
+
+                    // according to ZIP specs, zero-byte files MUST NOT include file data
+                    if (_uncompressedSize != 0)
+                    {
+                        Debug.Assert(_compressedBytes != null);
+                        foreach (byte[] compressedBytes in _compressedBytes)
+                        {
+                            await _archive.ArchiveStream.WriteAsync(compressedBytes, 0, compressedBytes.Length, cancellationToken).ConfigureAwait(false);
+                        }
+                    }
+                }
+            }
+            else // there is no data in the file, but if we are in update mode, we still need to write a header
+            {
+                if (_archive.Mode == ZipArchiveMode.Update || !_everOpenedForWrite)
+                {
+                    _everOpenedForWrite = true;
+                    await WriteLocalFileHeaderAsync(isEmptyFile: true, cancellationToken).ConfigureAwait(false);
                 }
             }
         }
@@ -1063,12 +1369,29 @@ namespace System.IO.Compression
             _outstandingWriteStream = null;
         }
 
+        private async ValueTask UnloadStreamsAsync()
+        {
+            if (_storedUncompressedData != null)
+                await _storedUncompressedData.DisposeAsync().ConfigureAwait(false);
+            _compressedBytes = null;
+            _outstandingWriteStream = null;
+        }
+
         private void CloseStreams()
         {
             // if the user left the stream open, close the underlying stream for them
             if (_outstandingWriteStream != null)
             {
                 _outstandingWriteStream.Dispose();
+            }
+        }
+
+        private async ValueTask CloseStreamsAsync()
+        {
+            // if the user left the stream open, close the underlying stream for them
+            if (_outstandingWriteStream != null)
+            {
+                await _outstandingWriteStream.DisposeAsync().ConfigureAwait(false);
             }
         }
 

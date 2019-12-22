@@ -86,7 +86,7 @@ namespace System.IO.Compression
         public override System.Threading.Tasks.Task WriteAsync(byte[] array, int offset, int count, System.Threading.CancellationToken cancellationToken) { throw null; }
         public override System.Threading.Tasks.ValueTask WriteAsync(System.ReadOnlyMemory<byte> buffer, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) { throw null; }
     }
-    public partial class ZipArchive : System.IDisposable
+    public partial class ZipArchive : System.IDisposable, System.IAsyncDisposable
     {
         public ZipArchive(System.IO.Stream stream) { }
         public ZipArchive(System.IO.Stream stream, System.IO.Compression.ZipArchiveMode mode) { }
@@ -98,6 +98,7 @@ namespace System.IO.Compression
         public System.IO.Compression.ZipArchiveEntry CreateEntry(string entryName, System.IO.Compression.CompressionLevel compressionLevel) { throw null; }
         public void Dispose() { }
         protected virtual void Dispose(bool disposing) { }
+        public virtual System.Threading.Tasks.ValueTask DisposeAsync() { throw null; }
         public System.IO.Compression.ZipArchiveEntry? GetEntry(string entryName) { throw null; }
     }
     public partial class ZipArchiveEntry
