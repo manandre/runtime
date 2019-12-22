@@ -11,8 +11,10 @@ namespace System.IO.Compression.Tests
 {
     public class zip_CreateTests : ZipFileTestBase
     {
-        [Fact]
-        public static void CreateModeInvalidOperations()
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public static async Task CreateModeInvalidOperations(bool disposeAsync)
         {
             MemoryStream ms = new MemoryStream();
             ZipArchive z = new ZipArchive(ms, ZipArchiveMode.Create);
@@ -47,136 +49,154 @@ namespace System.IO.Compression.Tests
 
             Assert.Throws<IOException>(() => e1.Open()); //"Can't open previous entry after new entry created"
 
-            z.Dispose();
+            await z.DisposeAsync(disposeAsync);
 
             Assert.Throws<ObjectDisposedException>(() => z.CreateEntry("dirka")); //"Can't create after dispose"
         }
 
         [Theory]
-        [InlineData("small", false, false)]
-        [InlineData("normal", false, false)]
-        [InlineData("empty", false, false)]
-        [InlineData("emptydir", false, false)]
-        [InlineData("small", true, false)]
-        [InlineData("normal", true, false)]
-        [InlineData("small", false, true)]
-        [InlineData("normal", false, true)]
-        public static async Task CreateNormal_Seekable(string folder, bool useSpansForWriting, bool writeInChunks)
+        [InlineData("small", false, false, false)]
+        [InlineData("normal", false, false, false)]
+        [InlineData("empty", false, false, false)]
+        [InlineData("emptydir", false, false, false)]
+        [InlineData("small", true, false, false)]
+        [InlineData("normal", true, false, false)]
+        [InlineData("small", false, true, false)]
+        [InlineData("normal", false, true, false)]
+        [InlineData("small", false, false, true)]
+        [InlineData("normal", false, false, true)]
+        [InlineData("empty", false, false, true)]
+        [InlineData("emptydir", false, false, true)]
+        [InlineData("small", true, false, true)]
+        [InlineData("normal", true, false, true)]
+        [InlineData("small", false, true, true)]
+        [InlineData("normal", false, true, true)]
+        public static async Task CreateNormal_Seekable(string folder, bool useSpansForWriting, bool writeInChunks, bool disposeAsync)
         {
             using (var s = new MemoryStream())
             {
                 var testStream = new WrappedStream(s, false, true, true, null);
-                await CreateFromDir(zfolder(folder), testStream, ZipArchiveMode.Create, useSpansForWriting, writeInChunks);
+                await CreateFromDir(zfolder(folder), testStream, ZipArchiveMode.Create, useSpansForWriting, writeInChunks, disposeAsync);
 
                 IsZipSameAsDir(s, zfolder(folder), ZipArchiveMode.Read, requireExplicit: true, checkTimes: true);
             }
         }
 
         [Theory]
-        [InlineData("small")]
-        [InlineData("normal")]
-        [InlineData("empty")]
-        [InlineData("emptydir")]
-        public static async Task CreateNormal_Unseekable(string folder)
+        [InlineData("small", false)]
+        [InlineData("normal", false)]
+        [InlineData("empty", false)]
+        [InlineData("emptydir", false)]
+        [InlineData("small", true)]
+        [InlineData("normal", true)]
+        [InlineData("empty", true)]
+        [InlineData("emptydir", true)]
+        public static async Task CreateNormal_Unseekable(string folder, bool disposeAsync)
         {
             using (var s = new MemoryStream())
             {
                 var testStream = new WrappedStream(s, false, true, false, null);
-                await CreateFromDir(zfolder(folder), testStream, ZipArchiveMode.Create);
+                await CreateFromDir(zfolder(folder), testStream, ZipArchiveMode.Create, disposeAsync: disposeAsync);
 
                 IsZipSameAsDir(s, zfolder(folder), ZipArchiveMode.Read, requireExplicit: true, checkTimes: true);
             }
         }
 
-        [Fact]
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
         [Trait(XunitConstants.Category, XunitConstants.IgnoreForCI)] // Jenkins fails with unicode characters [JENKINS-12610]
-        public static async Task CreateNormal_Unicode_Seekable()
+        public static async Task CreateNormal_Unicode_Seekable(bool disposeAsync)
         {
             using (var s = new MemoryStream())
             {
                 var testStream = new WrappedStream(s, false, true, true, null);
-                await CreateFromDir(zfolder("unicode"), testStream, ZipArchiveMode.Create);
+                await CreateFromDir(zfolder("unicode"), testStream, ZipArchiveMode.Create, disposeAsync: disposeAsync);
 
                 IsZipSameAsDir(s, zfolder("unicode"), ZipArchiveMode.Read, requireExplicit: true, checkTimes: true);
             }
         }
 
-        [Fact]
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
         [Trait(XunitConstants.Category, XunitConstants.IgnoreForCI)] // Jenkins fails with unicode characters [JENKINS-12610]
-        public static async Task CreateNormal_Unicode_Unseekable()
+        public static async Task CreateNormal_Unicode_Unseekable(bool disposeAsync)
         {
             using (var s = new MemoryStream())
             {
                 var testStream = new WrappedStream(s, false, true, false, null);
-                await CreateFromDir(zfolder("unicode"), testStream, ZipArchiveMode.Create);
+                await CreateFromDir(zfolder("unicode"), testStream, ZipArchiveMode.Create, disposeAsync: disposeAsync);
 
                 IsZipSameAsDir(s, zfolder("unicode"), ZipArchiveMode.Read, requireExplicit: true, checkTimes: true);
             }
         }
 
-        [Fact]
-        public static void CreateUncompressedArchive()
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public static async Task CreateUncompressedArchive(bool disposeAsync)
         {
             using (var testStream = new MemoryStream())
             {
                 var testfilename = "testfile";
                 var testFileContent = "Lorem ipsum dolor sit amet, consectetur adipiscing elit.";
-                using (var zip = new ZipArchive(testStream, ZipArchiveMode.Create))
+                var zip = new ZipArchive(testStream, ZipArchiveMode.Create);
+
+                var utf8WithoutBom = new Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+                ZipArchiveEntry newEntry = zip.CreateEntry(testfilename, CompressionLevel.NoCompression);
+                using (var writer = new StreamWriter(newEntry.Open(), utf8WithoutBom))
                 {
-                    var utf8WithoutBom = new Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
-                    ZipArchiveEntry newEntry = zip.CreateEntry(testfilename, CompressionLevel.NoCompression);
-                    using (var writer = new StreamWriter(newEntry.Open(), utf8WithoutBom))
-                    {
-                        writer.Write(testFileContent);
-                        writer.Flush();
-                    }
-                    byte[] fileContent = testStream.ToArray();
-                    // zip file header stores values as little-endian
-                    byte compressionMethod = fileContent[8];
-                    Assert.Equal(0, compressionMethod); // stored => 0, deflate => 8
-                    uint compressedSize = BitConverter.ToUInt32(fileContent, 18);
-                    uint uncompressedSize = BitConverter.ToUInt32(fileContent, 22);
-                    Assert.Equal(uncompressedSize, compressedSize);
-                    byte filenamelength = fileContent[26];
-                    Assert.Equal(testfilename.Length, filenamelength);
-                    string readFileName = ReadStringFromSpan(fileContent.AsSpan(30, filenamelength));
-                    Assert.Equal(testfilename, readFileName);
-                    string readFileContent = ReadStringFromSpan(fileContent.AsSpan(30 + filenamelength, testFileContent.Length));
-                    Assert.Equal(testFileContent, readFileContent);
+                    writer.Write(testFileContent);
+                    writer.Flush();
                 }
+                byte[] fileContent = testStream.ToArray();
+                // zip file header stores values as little-endian
+                byte compressionMethod = fileContent[8];
+                Assert.Equal(0, compressionMethod); // stored => 0, deflate => 8
+                uint compressedSize = BitConverter.ToUInt32(fileContent, 18);
+                uint uncompressedSize = BitConverter.ToUInt32(fileContent, 22);
+                Assert.Equal(uncompressedSize, compressedSize);
+                byte filenamelength = fileContent[26];
+                Assert.Equal(testfilename.Length, filenamelength);
+                string readFileName = ReadStringFromSpan(fileContent.AsSpan(30, filenamelength));
+                Assert.Equal(testfilename, readFileName);
+                string readFileContent = ReadStringFromSpan(fileContent.AsSpan(30 + filenamelength, testFileContent.Length));
+                Assert.Equal(testFileContent, readFileContent);
+                await zip.DisposeAsync(disposeAsync);
             }
         }
 
-        [Fact]
-        public static void CreateNormal_VerifyDataDescriptor()
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public static async Task CreateNormal_VerifyDataDescriptor(bool disposeAsync)
         {
             using var memoryStream = new MemoryStream();
             // We need an non-seekable stream so the data descriptor bit is turned on when saving
             var wrappedStream = new WrappedStream(memoryStream, true, true, false, null);
 
             // Creation will go through the path that sets the data descriptor bit when the stream is unseekable
-            using (var archive = new ZipArchive(wrappedStream, ZipArchiveMode.Create))
-            {
-                CreateEntry(archive, "A", "xxx");
-                CreateEntry(archive, "B", "yyy");
-            }
+            var archive = new ZipArchive(wrappedStream, ZipArchiveMode.Create);
+            CreateEntry(archive, "A", "xxx");
+            CreateEntry(archive, "B", "yyy");
+            await archive.DisposeAsync(disposeAsync);
 
             AssertDataDescriptor(memoryStream, true);
 
             // Update should flip the data descriptor bit to zero on save
-            using (var archive = new ZipArchive(memoryStream, ZipArchiveMode.Update))
-            {
-                ZipArchiveEntry entry = archive.Entries[0];
-                using Stream entryStream = entry.Open();
-                StreamReader reader = new StreamReader(entryStream);
-                string content = reader.ReadToEnd();
+            archive = new ZipArchive(memoryStream, ZipArchiveMode.Update);
+            ZipArchiveEntry entry = archive.Entries[0];
+            using Stream entryStream = entry.Open();
+            StreamReader reader = new StreamReader(entryStream);
+            string content = reader.ReadToEnd();
 
-                // Append a string to this entry
-                entryStream.Seek(0, SeekOrigin.End);
-                StreamWriter writer = new StreamWriter(entryStream);
-                writer.Write("zzz");
-                writer.Flush();
-            }
+            // Append a string to this entry
+            entryStream.Seek(0, SeekOrigin.End);
+            StreamWriter writer = new StreamWriter(entryStream);
+            writer.Write("zzz");
+            writer.Flush();
+            await archive.DisposeAsync(disposeAsync);
 
             AssertDataDescriptor(memoryStream, false);
         }

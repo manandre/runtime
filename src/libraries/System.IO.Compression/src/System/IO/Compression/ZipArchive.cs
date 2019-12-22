@@ -511,7 +511,7 @@ namespace System.IO.Compression
             }
         }
 
-        private async Task CloseStreamsAsync()
+        private async ValueTask CloseStreamsAsync()
         {
             if (!_leaveOpen)
             {
@@ -725,7 +725,7 @@ namespace System.IO.Compression
             WriteArchiveEpilogue(startOfCentralDirectory, sizeOfCentralDirectory);
         }
 
-        private async Task WriteFileAsync(CancellationToken cancellationToken = default)
+        private async ValueTask WriteFileAsync(CancellationToken cancellationToken = default)
         {
             // if we are in create mode, we always set readEntries to true in Init
             // if we are in update mode, we call EnsureCentralDirectoryRead, which sets readEntries to true
