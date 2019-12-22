@@ -18,7 +18,7 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        public async ValueTask BinaryWriter_CtorAndWriteAsyncTests1()
+        public async Task BinaryWriter_CtorAndWriteAsyncTests1()
         {
             // [] Smoke test to ensure that we can write with the constructed writer
             using Stream mstr = CreateStream();
@@ -34,7 +34,7 @@ namespace System.IO.Tests
 
         [Theory]
         [MemberData(nameof(EncodingAndEncodingStrings))]
-        public async ValueTask BinaryWriter_EncodingCtorAndWriteAsyncTests(Encoding encoding, string testString)
+        public async Task BinaryWriter_EncodingCtorAndWriteAsyncTests(Encoding encoding, string testString)
         {
             using Stream memStream = CreateStream();
             await using BinaryWriter writer = new BinaryWriter(memStream, encoding);
@@ -58,7 +58,7 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        public async ValueTask BinaryWriter_BaseStreamAsyncTests()
+        public async Task BinaryWriter_BaseStreamAsyncTests()
         {
             // [] Get the base stream for MemoryStream
             using Stream ms2 = CreateStream();
@@ -68,7 +68,7 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        public virtual async ValueTask BinaryWriter_FlushAsyncTests()
+        public virtual async Task BinaryWriter_FlushAsyncTests()
         {
             // [] Check that flush updates the underlying stream
             using (Stream memstr2 = CreateStream())
@@ -92,7 +92,7 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        public async ValueTask BinaryWriter_DisposeAsyncTests_Negative()
+        public async Task BinaryWriter_DisposeAsyncTests_Negative()
         {
             using Stream memStream = CreateStream();
             BinaryWriter binaryWriter = new BinaryWriter(memStream);
@@ -101,7 +101,7 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        public async ValueTask BinaryWriter_CloseAsyncTests_Negative()
+        public async Task BinaryWriter_CloseAsyncTests_Negative()
         {
             using Stream memStream = CreateStream();
             BinaryWriter binaryWriter = new BinaryWriter(memStream);
@@ -109,7 +109,7 @@ namespace System.IO.Tests
             await ValidateDisposedExceptionsAsync(binaryWriter);
         }
 
-        private async ValueTask ValidateDisposedExceptionsAsync(BinaryWriter binaryWriter)
+        private async Task ValidateDisposedExceptionsAsync(BinaryWriter binaryWriter)
         {
             Assert.Throws<ObjectDisposedException>(() => binaryWriter.Seek(1, SeekOrigin.Begin));
             await Assert.ThrowsAsync<ObjectDisposedException>(() => binaryWriter.WriteAsync(new byte[2], 0, 2).AsTask());

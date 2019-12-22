@@ -12,7 +12,7 @@ namespace System.IO.Tests
     public class BinaryWriter_WriteAsyncTests
     {
         [Fact]
-        public async ValueTask BinaryWriter_WriteBoolAsyncTest()
+        public async Task BinaryWriter_WriteBoolAsyncTest()
         {
             // [] Write a series of booleans to a stream
             using(Stream mstr = CreateStream())
@@ -41,7 +41,7 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        public async ValueTask BinaryWriter_WriteSingleAsyncTest()
+        public async Task BinaryWriter_WriteSingleAsyncTest()
         {
             float[] sglArr = new float[] {
                 float.MinValue, float.MaxValue, float.Epsilon, float.PositiveInfinity, float.NegativeInfinity, new float(),
@@ -52,7 +52,7 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        public async ValueTask BinaryWriter_WriteDecimalAsyncTest()
+        public async Task BinaryWriter_WriteDecimalAsyncTest()
         {
             decimal[] decArr = new decimal[] {
                 decimal.One, decimal.Zero, decimal.MinusOne, decimal.MinValue, decimal.MaxValue,
@@ -64,7 +64,7 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        public async ValueTask BinaryWriter_WriteDoubleAsyncTest()
+        public async Task BinaryWriter_WriteDoubleAsyncTest()
         {
             double[] dblArr = new double[] {
                 double.NegativeInfinity, double.PositiveInfinity, double.Epsilon, double.MinValue, double.MaxValue,
@@ -75,7 +75,7 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        public async ValueTask BinaryWriter_WriteInt16AsyncTest()
+        public async Task BinaryWriter_WriteInt16AsyncTest()
         {
             short[] i16Arr = new short[] { short.MinValue, short.MaxValue, 0, -10000, 10000, -50, 50 };
 
@@ -83,7 +83,7 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        public async ValueTask BinaryWriter_WriteInt32AsyncTest()
+        public async Task BinaryWriter_WriteInt32AsyncTest()
         {
             int[] i32arr = new int[] { int.MinValue, int.MaxValue, 0, -10000, 10000, -50, 50 };
 
@@ -91,7 +91,7 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        public async ValueTask BinaryWriter_WriteInt64AsyncTest()
+        public async Task BinaryWriter_WriteInt64AsyncTest()
         {
             long[] i64arr = new long[] { long.MinValue, long.MaxValue, 0, -10000, 10000, -50, 50 };
 
@@ -99,7 +99,7 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        public async ValueTask BinaryWriter_WriteUInt16AsyncTest()
+        public async Task BinaryWriter_WriteUInt16AsyncTest()
         {
             ushort[] ui16Arr = new ushort[] { ushort.MinValue, ushort.MaxValue, 0, 100, 1000, 10000, ushort.MaxValue - 100 };
 
@@ -107,7 +107,7 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        public async ValueTask BinaryWriter_WriteUInt32AsyncTest()
+        public async Task BinaryWriter_WriteUInt32AsyncTest()
         {
             uint[] ui32Arr = new uint[] { uint.MinValue, uint.MaxValue, 0, 100, 1000, 10000, uint.MaxValue - 100 };
 
@@ -115,7 +115,7 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        public async ValueTask BinaryWriter_WriteUInt64AsyncTest()
+        public async Task BinaryWriter_WriteUInt64AsyncTest()
         {
             ulong[] ui64Arr = new ulong[] { ulong.MinValue, ulong.MaxValue, 0, 100, 1000, 10000, ulong.MaxValue - 100 };
 
@@ -123,7 +123,7 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        public async ValueTask BinaryWriter_WriteStringAsyncTest()
+        public async Task BinaryWriter_WriteStringAsyncTest()
         {
             StringBuilder sb = new StringBuilder();
             string str1;
@@ -140,7 +140,7 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        public async ValueTask BinaryWriter_WriteStringAsyncTest_Null()
+        public async Task BinaryWriter_WriteStringAsyncTest_Null()
         {
             using (Stream memStream = CreateStream())
             await using (BinaryWriter dw2 = new BinaryWriter(memStream))
@@ -154,7 +154,7 @@ namespace System.IO.Tests
             return new MemoryStream();
         }
 
-        private async ValueTask WriteAsyncTest<T>(T[] testElements, Func<BinaryWriter, T, ValueTask> writeAsync, Func<BinaryReader, T> read)
+        private async Task WriteAsyncTest<T>(T[] testElements, Func<BinaryWriter, T, ValueTask> writeAsync, Func<BinaryReader, T> read)
         {
             using (Stream memStream = CreateStream())
             await using (BinaryWriter writer = new BinaryWriter(memStream))

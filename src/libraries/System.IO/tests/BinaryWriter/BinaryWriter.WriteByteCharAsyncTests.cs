@@ -22,7 +22,7 @@ namespace System.IO.Tests
         /// 3) Casting an int to char and writing it, works.
         /// </summary>
         [Fact]
-        public async ValueTask BinaryWriter_WriteCharAsyncTest()
+        public async Task BinaryWriter_WriteCharAsyncTest()
         {
             Stream mstr = CreateStream();
             BinaryWriter dw2 = new BinaryWriter(mstr);
@@ -70,7 +70,7 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        public async ValueTask BinaryWriter_WriteCharAsyncTest_Negative()
+        public async Task BinaryWriter_WriteCharAsyncTest_Negative()
         {
             //If someone writes out characters using BinaryWriter's Write(char[]) method, they must use something like BinaryReader's ReadChars(int) method to read it back in.
             //They cannot use BinaryReader's ReadChar().  Similarly, data written using Write(char) can't be read back using ReadChars(int).
@@ -99,7 +99,7 @@ namespace System.IO.Tests
         /// Writing bytes casted to chars and using a different encoding; iso-2022-jp.
         /// </summary>
         [Fact]
-        public async ValueTask BinaryWriter_WriteCharTest2()
+        public async Task BinaryWriter_WriteCharTest2()
         {
             // BinaryReader/BinaryWriter don't do well when mixing char or char[] data and binary data.
             // This behavior remains for compat.
@@ -134,7 +134,7 @@ namespace System.IO.Tests
         /// Testing that bytes can be written to a stream with BinaryWriter.
         /// </summary>
         [Fact]
-        public async ValueTask BinaryWriter_WriteByteAsyncTest()
+        public async Task BinaryWriter_WriteByteAsyncTest()
         {
             int ii = 0;
             byte[] bytArr = new byte[] { byte.MinValue, byte.MaxValue, 100, 1, 10, byte.MaxValue / 2, byte.MaxValue - 100 };
@@ -163,7 +163,7 @@ namespace System.IO.Tests
         /// Testing that SBytes can be written to a stream with BinaryWriter.
         /// </summary>
         [Fact]
-        public async ValueTask BinaryWriter_WriteSByteAsyncTest()
+        public async Task BinaryWriter_WriteSByteAsyncTest()
         {
             int ii = 0;
             sbyte[] sbArr = new sbyte[] {
@@ -192,7 +192,7 @@ namespace System.IO.Tests
         /// and read past the end of that stream.
         /// </summary>
         [Fact]
-        public async ValueTask BinaryWriter_WriteSByteAsyncTest_NegativeCase()
+        public async Task BinaryWriter_WriteSByteAsyncTest_NegativeCase()
         {
             int ii = 0;
             sbyte[] sbArr = new sbyte[] {
@@ -216,7 +216,7 @@ namespace System.IO.Tests
         /// Testing that a byte[] can be written to a stream with BinaryWriter.
         /// </summary>
         [Fact]
-        public async ValueTask BinaryWriter_WriteBArrayAsyncTest()
+        public async Task BinaryWriter_WriteBArrayAsyncTest()
         {
             int ii = 0;
             byte[] bytArr = new byte[] { byte.MinValue, byte.MaxValue, 1, 5, 10, 100, 200 };
@@ -241,7 +241,7 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        public async ValueTask BinaryWriter_WriteBArrayAsyncTest_Negative()
+        public async Task BinaryWriter_WriteBArrayAsyncTest_Negative()
         {
             int[] iArrInvalidValues = new int[] { -1, -2, -100, -1000, -10000, -100000, -1000000, -10000000, -100000000, -1000000000, int.MinValue, short.MinValue };
             int[] iArrLargeValues = new int[] { int.MaxValue, int.MaxValue - 1, int.MaxValue / 2, int.MaxValue / 10, int.MaxValue / 100 };
@@ -293,7 +293,7 @@ namespace System.IO.Tests
         /// 2) Tests exceptional scenarios.
         /// </summary>
         [Fact]
-        public async ValueTask BinaryWriter_WriteBArrayTest2()
+        public async Task BinaryWriter_WriteBArrayTest2()
         {
             byte[] bArr = new byte[1000];
             bArr[0] = byte.MinValue;
@@ -332,7 +332,7 @@ namespace System.IO.Tests
         /// 2) Tests exceptional scenarios.
         /// </summary>
         [Fact]
-        public async ValueTask BinaryWriter_WriteCharArrayAsyncTest()
+        public async Task BinaryWriter_WriteCharArrayAsyncTest()
         {
             int ii = 0;
             char[] chArr = new char[1000];
@@ -371,7 +371,7 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        public async ValueTask BinaryWriter_WriteCharArrayAsyncTest_Negative()
+        public async Task BinaryWriter_WriteCharArrayAsyncTest_Negative()
         {
             int[] iArrInvalidValues = new int[] { -1, -2, -100, -1000, -10000, -100000, -1000000, -10000000, -100000000, -1000000000, int.MinValue, short.MinValue };
             int[] iArrLargeValues = new int[] { int.MaxValue, int.MaxValue - 1, int.MaxValue / 2, int.MaxValue / 10, int.MaxValue / 100 };
@@ -440,7 +440,7 @@ namespace System.IO.Tests
         /// then it returns 0xfffd, which is why BinaryReader.ReadChar needs to do an explicit check. (It always throws when it encounters a surrogate)
         /// </summary>
         [Fact]
-        public async ValueTask BinaryWriter_WriteCharArrayTest2()
+        public async Task BinaryWriter_WriteCharArrayTest2()
         {
 
             using Stream mem = CreateStream();
@@ -485,7 +485,7 @@ namespace System.IO.Tests
         /// 2) Tests Exceptional cases.
         /// </summary>
         [Fact]
-        public async ValueTask BinaryWriter_WriteCharArrayTest3()
+        public async Task BinaryWriter_WriteCharArrayTest3()
         {
             char[] chArr = new char[1000];
             chArr[0] = char.MinValue;
@@ -520,7 +520,7 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        public async ValueTask BinaryWriter_WriteSpan()
+        public async Task BinaryWriter_WriteSpan()
         {
             byte[] bytes = new byte[] { 4, 2, 7, 0xFF };
             char[] chars = new char[] { 'a', '7', char.MaxValue };
