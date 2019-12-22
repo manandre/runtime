@@ -39,7 +39,7 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        public async ValueTask ReadAsync_InvalidEncoding()
+        public async Task ReadAsync_InvalidEncoding()
         {
             using var str = CreateStream();
 
@@ -57,7 +57,7 @@ namespace System.IO.Tests
         [InlineData(100, 25, 50, 100, 50)]
         [InlineData(50, 0, 100, 100, 50)]
         [InlineData(0, 0, 10, 10, 0)]
-        public async ValueTask ReadAsync_CharArray(int sourceSize, int index, int count, int destinationSize, int expectedReadLength)
+        public async Task ReadAsync_CharArray(int sourceSize, int index, int count, int destinationSize, int expectedReadLength)
         {
             using var stream = CreateStream();
 
@@ -91,7 +91,7 @@ namespace System.IO.Tests
         [InlineData(new[] { 'h', 'e', '\0', '\0', 'o' }, 5, new[] { 'h', 'e', '\0', '\0', 'o' })]
         [InlineData(new[] { 'h', 'e', 'l', 'l', 'o' }, 0, new char[0])]
         [InlineData(new char[0], 5, new char[0])]
-        public async ValueTask ReadCharsAsync(char[] source, int readLength, char[] expected)
+        public async Task ReadCharsAsync(char[] source, int readLength, char[] expected)
         {
             using var stream = CreateStream();
 
@@ -121,7 +121,7 @@ namespace System.IO.Tests
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
-        public async ValueTask ReadCharsAsync_OverReads(bool unicodeEncoding)
+        public async Task ReadCharsAsync_OverReads(bool unicodeEncoding)
         {
             Encoding encoding = unicodeEncoding ? Encoding.Unicode : Encoding.UTF8;
 
@@ -147,7 +147,7 @@ namespace System.IO.Tests
         [InlineData(50, 100, 50)]
         [InlineData(10, 0, 0)]
         [InlineData(0, 10, 0)]
-        public async ValueTask ReadAsync_ByteSpan(int sourceSize, int destinationSize, int expectedReadLength)
+        public async Task ReadAsync_ByteSpan(int sourceSize, int destinationSize, int expectedReadLength)
         {
             using var stream = CreateStream();
 
@@ -169,7 +169,7 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        public async ValueTask ReadAsync_ByteSpan_ThrowIfDisposed()
+        public async Task ReadAsync_ByteSpan_ThrowIfDisposed()
         {
             using var memStream = CreateStream();
             var binaryReader = new BinaryReader(memStream);
@@ -183,7 +183,7 @@ namespace System.IO.Tests
         [InlineData(50, 100, 50)]
         [InlineData(10, 0, 0)]
         [InlineData(0, 10, 0)]
-        public async ValueTask ReadAsync_CharSpan(int sourceSize, int destinationSize, int expectedReadLength)
+        public async Task ReadAsync_CharSpan(int sourceSize, int destinationSize, int expectedReadLength)
         {
             using var stream = CreateStream();
 
@@ -211,7 +211,7 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        public async ValueTask ReadAsync_CharSpan_ThrowIfDisposed()
+        public async Task ReadAsync_CharSpan_ThrowIfDisposed()
         {
             using var memStream = CreateStream();
             var binaryReader = new BinaryReader(memStream);
