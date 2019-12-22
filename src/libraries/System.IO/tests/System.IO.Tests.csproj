@@ -9,6 +9,7 @@
   <ItemGroup>
     <Compile Include="IndentedTextWriter.cs" />
     <Compile Include="BinaryReader\BinaryReaderTests.cs" />
+    <Compile Include="BinaryReader\BinaryReader.AsyncTests.cs" />
     <Compile Include="MemoryStream\MemoryStream.GetBufferTests.cs" />
     <Compile Include="Stream\Stream.cs" />
     <Compile Include="StreamReader\StreamReader.cs" />
@@ -18,8 +19,11 @@
     <Compile Include="Stream\Stream.APMMethodsTests.cs" />
     <Compile Include="BinaryWriter\BinaryWriter.DisposeAsync.cs" />
     <Compile Include="BinaryWriter\BinaryWriter.WriteByteCharTests.cs" />
+    <Compile Include="BinaryWriter\BinaryWriter.WriteByteCharAsyncTests.cs" />
     <Compile Include="BinaryWriter\BinaryWriter.WriteTests.cs" />
+    <Compile Include="BinaryWriter\BinaryWriter.WriteAsyncTests.cs" />
     <Compile Include="BinaryWriter\BinaryWriterTests.cs" />
+    <Compile Include="BinaryWriter\BinaryWriter.AsyncTests.cs" />
     <Compile Include="BufferedStream\BufferedStream.FlushTests.cs" />
     <Compile Include="BufferedStream\BufferedStream.InvalidParameters.cs" />
     <Compile Include="BufferedStream\BufferedStreamTests.cs" />
