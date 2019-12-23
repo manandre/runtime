@@ -36,10 +36,17 @@ namespace System.IO.Tests
         }
 
         [Fact]
-        public async Task MemoryStreamStress()
+        public void MemoryStreamStress()
         {
             var ms1 = CreateStream();
-            await StreamTest(ms1, false);
+            StreamTest(ms1, false);
+        }
+
+        [Fact]
+        public async Task MemoryStreamStressAsync()
+        {
+            var ms1 = CreateStream();
+            await StreamTestAsync(ms1, false);
         }
 
         private static void SeekTest(Stream stream, bool fSuppres)
@@ -108,10 +115,9 @@ namespace System.IO.Tests
             Assert.Throws<IOException>(() => stream.Seek(-1, SeekOrigin.Current));
         }
 
-        private static async Task StreamTest(Stream stream, bool fSuppress)
+        private static void StreamTest(Stream stream, bool fSuppress)
         {
             string strValue;
-            int iValue;
 
             //[] We will first use the stream's 2 writing methods
             int iLength = 1 << 10;
@@ -178,7 +184,7 @@ namespace System.IO.Tests
 
             for (int i = 0; i < 10; i++)
             {
-                Assert.Equal( (byte)i, br1.ReadByte());
+                Assert.Equal((byte)i, br1.ReadByte());
                 Assert.Equal((sbyte)i, br1.ReadSByte());
                 Assert.Equal((short)i, br1.ReadInt16());
                 Assert.Equal((char)i, br1.ReadChar());
@@ -213,36 +219,114 @@ namespace System.IO.Tests
             strValue = br1.ReadString();
             Assert.Equal(new string(chArr), strValue);
 
-            stream.Seek(1, SeekOrigin.Current); // In the original test, success here would end the test
+            stream.Seek(1, SeekOrigin.Current);
+        }
 
-            //[] we will do some async tests here now
-            stream.Position = 0;
+        private static async Task StreamTestAsync(Stream stream, bool fSuppress)
+        {
+            string strValue;
+
+            //[] We will first use the stream's 2 writing methods
+            int iLength = 1 << 10;
+            stream.Seek(0, SeekOrigin.Begin);
+
+            for (int i = 0; i < iLength; i++)
+                await stream.WriteByteAsync(unchecked((byte)i));
+
+            byte[] btArr = new byte[iLength];
+            for (int i = 0; i < iLength; i++)
+                btArr[i] = unchecked((byte)i);
+            await stream.WriteAsync(btArr, 0, iLength);
+
+            //we will write many things here using a binary writer
+            BinaryWriter bw1 = new BinaryWriter(stream);
+            await bw1.WriteAsync(false);
+            await bw1.WriteAsync(true);
+
+            for (int i = 0; i < 10; i++)
+            {
+                await bw1.WriteAsync((byte)i);
+                await bw1.WriteAsync((sbyte)i);
+                await bw1.WriteAsync((short)i);
+                await bw1.WriteAsync((char)i);
+                await bw1.WriteAsync((ushort)i);
+                await bw1.WriteAsync(i);
+                await bw1.WriteAsync((uint)i);
+                await bw1.WriteAsync((long)i);
+                await bw1.WriteAsync((ulong)i);
+                await bw1.WriteAsync((float)i);
+                await bw1.WriteAsync((double)i);
+            }
+
+            //Some strings, chars and Bytes
+            char[] chArr = new char[iLength];
+            for (int i = 0; i < iLength; i++)
+                chArr[i] = (char)i;
+
+            await bw1.WriteAsync(chArr);
+            await bw1.WriteAsync(chArr, 512, 512);
+
+            await bw1.WriteAsync(new string(chArr));
+            await bw1.WriteAsync(new string(chArr));
+
+            //[] we will now read
+            stream.Seek(0, SeekOrigin.Begin);
+            for (int i = 0; i < iLength; i++)
+            {
+                Assert.Equal(i % 256, await stream.ReadByteAsync());
+            }
 
             btArr = new byte[iLength];
-            for (int i = 0; i < iLength; i++)
-                btArr[i] = unchecked((byte)(i + 5));
-
-            await stream.WriteAsync(btArr, 0, btArr.Length);
-
-            stream.Position = 0;
+            await stream.ReadAsync(btArr, 0, iLength);
             for (int i = 0; i < iLength; i++)
             {
-                Assert.Equal(unchecked((byte)(i + 5)), stream.ReadByte());
+                Assert.Equal(unchecked((byte)i), btArr[i]);
             }
 
-            //we will read asynchronously
-            stream.Position = 0;
+            //Now, for the binary reader
+            BinaryReader br1 = new BinaryReader(stream);
 
-            byte[] compArr = new byte[iLength];
+            Assert.False(br1.ReadBoolean());
+            Assert.True(br1.ReadBoolean());
 
-            iValue = await stream.ReadAsync(compArr, 0, compArr.Length);
+            for (int i = 0; i < 10; i++)
+            {
+                Assert.Equal((byte)i, await br1.ReadByteAsync());
+                Assert.Equal((sbyte)i, await br1.ReadSByteAsync());
+                Assert.Equal((short)i, await br1.ReadInt16Async());
+                Assert.Equal((char)i, await br1.ReadCharAsync());
+                Assert.Equal((ushort)i, await br1.ReadUInt16Async());
+                Assert.Equal(i, await br1.ReadInt32Async());
+                Assert.Equal((uint)i, await br1.ReadUInt32Async());
+                Assert.Equal((long)i, await br1.ReadInt64Async());
+                Assert.Equal((ulong)i, await br1.ReadUInt64Async());
+                Assert.Equal((float)i, await br1.ReadSingleAsync());
+                Assert.Equal((double)i, await br1.ReadDoubleAsync());
+            }
 
-            Assert.Equal(btArr.Length, iValue);
-
+            chArr = await br1.ReadCharsAsync(iLength);
             for (int i = 0; i < iLength; i++)
             {
-                Assert.Equal(compArr[i], btArr[i]);
+                Assert.Equal((char)i, chArr[i]);
             }
+
+            chArr = new char[512];
+            chArr = await br1.ReadCharsAsync(iLength / 2);
+            for (int i = 0; i < iLength / 2; i++)
+            {
+                Assert.Equal((char)(iLength / 2 + i), chArr[i]);
+            }
+
+            chArr = new char[iLength];
+            for (int i = 0; i < iLength; i++)
+                chArr[i] = (char)i;
+            strValue = await br1.ReadStringAsync();
+            Assert.Equal(new string(chArr), strValue);
+
+            strValue = await br1.ReadStringAsync();
+            Assert.Equal(new string(chArr), strValue);
+
+            stream.Seek(1, SeekOrigin.Current);
         }
 
         [Fact]
