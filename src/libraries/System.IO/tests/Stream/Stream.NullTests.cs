@@ -103,6 +103,16 @@ namespace System.IO.Tests
             Assert.Equal(0, source.Position);
         }
 
+        [Fact]
+        public static async Task TestNullStream_ReadByteAsync()
+        {
+            Stream source = Stream.Null;
+
+            int data = await source.ReadByteAsync();
+            Assert.Equal(-1, data);
+            Assert.Equal(0, source.Position);
+        }
+
         [Theory]
         [MemberData(nameof(NullStream_ReadWriteData))]
         public static async Task TestNullStream_Write(byte[] buffer, int offset, int count)
@@ -125,6 +135,15 @@ namespace System.IO.Tests
             Stream source = Stream.Null;
 
             source.WriteByte(3);
+            Assert.Equal(0, source.Position);
+        }
+
+        [Fact]
+        public static async Task TestNullStream_WriteByteAsync()
+        {
+            Stream source = Stream.Null;
+
+            await source.WriteByteAsync(3);
             Assert.Equal(0, source.Position);
         }
 
