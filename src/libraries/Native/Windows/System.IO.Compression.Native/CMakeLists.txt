@@ -74,10 +74,43 @@ set (NATIVECOMPRESSION_SOURCES
     ../../AnyOS/brotli/enc/metablock.c
     ../../AnyOS/brotli/enc/static_dict.c
     ../../AnyOS/brotli/enc/utf8_util.c
+    ../../AnyOS/zstandard/common/debug.c
+    ../../AnyOS/zstandard/common/entropy_common.c
+    ../../AnyOS/zstandard/common/error_private.c
+    ../../AnyOS/zstandard/common/fse_decompress.c
+    ../../AnyOS/zstandard/common/pool.c
+    ../../AnyOS/zstandard/common/threading.c
+    ../../AnyOS/zstandard/common/xxhash.c
+    ../../AnyOS/zstandard/common/zstd_common.c
+    ../../AnyOS/zstandard/compress/fse_compress.c
+    ../../AnyOS/zstandard/compress/hist.c
+    ../../AnyOS/zstandard/compress/huf_compress.c
+    ../../AnyOS/zstandard/compress/zstdmt_compress.c
+    ../../AnyOS/zstandard/compress/zstd_compress.c
+    ../../AnyOS/zstandard/compress/zstd_compress_literals.c
+    ../../AnyOS/zstandard/compress/zstd_compress_sequences.c
+    ../../AnyOS/zstandard/compress/zstd_compress_superblock.c
+    ../../AnyOS/zstandard/compress/zstd_double_fast.c
+    ../../AnyOS/zstandard/compress/zstd_fast.c
+    ../../AnyOS/zstandard/compress/zstd_lazy.c
+    ../../AnyOS/zstandard/compress/zstd_ldm.c
+    ../../AnyOS/zstandard/compress/zstd_opt.c
+    ../../AnyOS/zstandard/decompress/huf_decompress.c
+    ../../AnyOS/zstandard/decompress/zstd_ddict.c
+    ../../AnyOS/zstandard/decompress/zstd_decompress.c
+    ../../AnyOS/zstandard/decompress/zstd_decompress_block.c
+    ../../AnyOS/zstandard/dictBuilder/cover.c
+    ../../AnyOS/zstandard/dictBuilder/divsufsort.c
+    ../../AnyOS/zstandard/dictBuilder/fastcover.c
+    ../../AnyOS/zstandard/dictBuilder/zdict.c
 )
 
 #Include Brotli include files
 include_directories("../../AnyOS/brotli/include")
+
+#Include Zstandard include files
+include_directories("../../AnyOS/zstandard")
+add_definitions(-DZSTD_MULTITHREAD)
 
 if (GEN_SHARED_LIB)
     add_library(System.IO.Compression.Native
