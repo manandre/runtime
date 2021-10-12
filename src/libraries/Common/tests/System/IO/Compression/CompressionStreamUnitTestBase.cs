@@ -461,6 +461,7 @@ namespace System.IO.Compression
             {
                 using var mms = new MemoryStream();
                 using var compressor = CreateStream(mms, compressionLevel);
+                uncompressedStream.Position = 0;
                 await uncompressedStream.CopyToAsync(compressor);
                 compressor.Flush();
                 return mms.Length;
