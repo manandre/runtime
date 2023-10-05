@@ -1056,7 +1056,7 @@ namespace System.Text
         {
             if (value.TryFormat(RemainingCurrentChunk, out int charsWritten, format: default, provider: null))
             {
-                if ((uint)charsWritten > (uint)RemainingCurrentChunk.Length)
+                if ((uint)charsWritten > (uint)RemainingCurrentChunkLength)
                 {
                     // Protect against faulty ISpanFormattable implementations returning invalid charsWritten values.
                     // Other code in _stringBuilder uses Unsafe manipulation, and we want to ensure m_ChunkLength remains safe.
@@ -1074,7 +1074,7 @@ namespace System.Text
         {
             if (value.TryFormat(RemainingCurrentChunk, out int charsWritten, format, provider))
             {
-                if ((uint)charsWritten > (uint)RemainingCurrentChunk.Length)
+                if ((uint)charsWritten > (uint)RemainingCurrentChunkLength)
                 {
                     // Protect against faulty ISpanFormattable implementations returning invalid charsWritten values.
                     // Other code in _stringBuilder uses Unsafe manipulation, and we want to ensure m_ChunkLength remains safe.
@@ -1635,7 +1635,7 @@ namespace System.Text
                         arg is ISpanFormattable spanFormattableArg &&
                         spanFormattableArg.TryFormat(RemainingCurrentChunk, out int charsWritten, itemFormatSpan, provider))
                     {
-                        if ((uint)charsWritten > (uint)RemainingCurrentChunk.Length)
+                        if ((uint)charsWritten > (uint)RemainingCurrentChunkLength)
                         {
                             // Untrusted ISpanFormattable implementations might return an erroneous charsWritten value,
                             // and m_ChunkLength might end up being used in Unsafe code, so fail if we get back an
@@ -2408,6 +2408,8 @@ namespace System.Text
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => new Span<char>(m_ChunkChars, m_ChunkLength, m_ChunkChars.Length - m_ChunkLength);
         }
+
+        private int RemainingCurrentChunkLength => m_ChunkChars.Length - m_ChunkLength;
 
         /// <summary>
         /// Finds the chunk that logically succeeds the specified chunk.
