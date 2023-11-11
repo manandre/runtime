@@ -1052,11 +1052,13 @@ namespace System.Text
         [CLSCompliant(false)]
         public StringBuilder Append(ulong value) => AppendSpanFormattable(value);
 
-        private StringBuilder AppendSpanFormattable<T>(T value) where T : ISpanFormattable
+        private StringBuilder AppendSpanFormattable<T>(T value, bool untrusted = false) where T : ISpanFormattable
         {
+            Debug.Assert(!untrusted && typeof(T).Assembly.Equals(typeof(object).Assembly), "Implementation trusts the results of TryFormat because T is expected to be something known");
+
             if (value.TryFormat(RemainingCurrentChunk, out int charsWritten, format: default, provider: null))
             {
-                if ((uint)charsWritten > (uint)RemainingCurrentChunkLength)
+                if (untrusted && ((uint)charsWritten > (uint)RemainingCurrentChunkLength))
                 {
                     // Protect against faulty ISpanFormattable implementations returning invalid charsWritten values.
                     // Other code in _stringBuilder uses Unsafe manipulation, and we want to ensure m_ChunkLength remains safe.
@@ -1072,15 +1074,10 @@ namespace System.Text
 
         internal StringBuilder AppendSpanFormattable<T>(T value, string? format, IFormatProvider? provider) where T : ISpanFormattable
         {
+            Debug.Assert(typeof(T).Assembly.Equals(typeof(object).Assembly), "Implementation trusts the results of TryFormat because T is expected to be something known");
+
             if (value.TryFormat(RemainingCurrentChunk, out int charsWritten, format, provider))
             {
-                if ((uint)charsWritten > (uint)RemainingCurrentChunkLength)
-                {
-                    // Protect against faulty ISpanFormattable implementations returning invalid charsWritten values.
-                    // Other code in _stringBuilder uses Unsafe manipulation, and we want to ensure m_ChunkLength remains safe.
-                    ThrowHelper.ThrowFormatInvalidString();
-                }
-
                 m_ChunkLength += charsWritten;
                 return this;
             }
@@ -1090,9 +1087,9 @@ namespace System.Text
 
         public StringBuilder Append(object? value) => value switch
         {
-            ISpanFormattable sf => AppendSpanFormattable(sf),
-            object o => Append(o.ToString()),
-            null => this
+            null => this,
+            ISpanFormattable sf => AppendSpanFormattable(sf, untrusted: true),
+            object o => Append(o.ToString())
         };
 
         public StringBuilder Append(char[]? value)
