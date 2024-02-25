@@ -374,6 +374,7 @@ namespace System.Text.Json.Serialization.Tests
                 yield return (GetProp(nameof(JsonSerializerOptions.WriteIndented)), true);
                 yield return (GetProp(nameof(JsonSerializerOptions.IndentCharacter)), '\t');
                 yield return (GetProp(nameof(JsonSerializerOptions.IndentSize)), 1);
+                yield return (GetProp(nameof(JsonSerializerOptions.NewLine)), "\r\n");
                 yield return (GetProp(nameof(JsonSerializerOptions.ReferenceHandler)), ReferenceHandler.Preserve);
                 yield return (GetProp(nameof(JsonSerializerOptions.TypeInfoResolver)), new DefaultJsonTypeInfoResolver());
 

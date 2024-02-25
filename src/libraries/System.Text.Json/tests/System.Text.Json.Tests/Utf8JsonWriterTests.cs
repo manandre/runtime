@@ -1426,11 +1426,16 @@ namespace System.Text.Json.Tests
         private static string GetExpectedLargeString(JsonWriterOptions options)
         {
             var ms = new MemoryStream();
-            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true);
+            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true)
+            {
+                NewLine = options.NewLine
+            };
 
             var json = new JsonTextWriter(streamWriter)
             {
-                Formatting = options.Indented ? Formatting.Indented : Formatting.None
+                Formatting = options.Indented ? Formatting.Indented : Formatting.None,
+                IndentChar = options.IndentCharacter,
+                Indentation = options.IndentSize
             };
 
             json.WriteStartArray();
@@ -1442,7 +1447,7 @@ namespace System.Text.Json.Tests
 
             json.Flush();
 
-            return HandleIndent(Encoding.UTF8.GetString(ms.ToArray()), options);
+            return Encoding.UTF8.GetString(ms.ToArray());
         }
 
         [Theory]
@@ -2700,10 +2705,16 @@ namespace System.Text.Json.Tests
         {
             var output = new ArrayBufferWriter<byte>(1024);
 
-            var stringWriter = new StringWriter();
+            var stringWriter = new StringWriter()
+            {
+                NewLine = options.NewLine
+            };
+
             var json = new JsonTextWriter(stringWriter)
             {
                 Formatting = options.Indented ? Formatting.Indented : Formatting.None,
+                IndentChar = options.IndentCharacter,
+                Indentation = options.IndentSize
             };
 
             json.WriteStartObject();
@@ -2722,7 +2733,7 @@ namespace System.Text.Json.Tests
 
             json.Flush();
 
-            string expectedStr = HandleIndent(stringWriter.ToString(), options);
+            string expectedStr = stringWriter.ToString();
 
             using var jsonUtf8 = new Utf8JsonWriter(output, options);
             jsonUtf8.WriteStartObject();
@@ -3558,14 +3569,14 @@ namespace System.Text.Json.Tests
 
             Assert.Equal(0, jsonUtf8.BytesCommitted);
             if (options.Indented)
-                Assert.Equal(26 + options.IndentSize + Environment.NewLine.Length + 1, jsonUtf8.BytesPending); // new lines, indentation, white space
+                Assert.Equal(26 + options.IndentSize + options.NewLine.Length + 1, jsonUtf8.BytesPending); // new lines, indentation, white space
             else
                 Assert.Equal(26, jsonUtf8.BytesPending);
 
             jsonUtf8.Flush();
 
             if (options.Indented)
-                Assert.Equal(26 + options.IndentSize + Environment.NewLine.Length + 1, jsonUtf8.BytesCommitted); // new lines, indentation, white space
+                Assert.Equal(26 + options.IndentSize + options.NewLine.Length + 1, jsonUtf8.BytesCommitted); // new lines, indentation, white space
             else
                 Assert.Equal(26, jsonUtf8.BytesCommitted);
 
@@ -3575,19 +3586,19 @@ namespace System.Text.Json.Tests
             jsonUtf8.WriteEndObject();
 
             if (options.Indented)
-                Assert.Equal(26 + options.IndentSize + Environment.NewLine.Length + 1, jsonUtf8.BytesCommitted);
+                Assert.Equal(26 + options.IndentSize + options.NewLine.Length + 1, jsonUtf8.BytesCommitted);
             else
                 Assert.Equal(26, jsonUtf8.BytesCommitted);
 
             if (options.Indented)
-                Assert.Equal(27 + options.IndentSize + (2 * Environment.NewLine.Length) + 1, jsonUtf8.BytesPending); // new lines, indentation, white space
+                Assert.Equal(27 + options.IndentSize + (2 * options.NewLine.Length) + 1, jsonUtf8.BytesPending); // new lines, indentation, white space
             else
                 Assert.Equal(27, jsonUtf8.BytesPending);
 
             jsonUtf8.Flush();
 
             if (options.Indented)
-                Assert.Equal(53 + (2 * options.IndentSize) + (3 * Environment.NewLine.Length) + (1 * 2), jsonUtf8.BytesCommitted); // new lines, indentation, white space
+                Assert.Equal(53 + (2 * options.IndentSize) + (3 * options.NewLine.Length) + (1 * 2), jsonUtf8.BytesCommitted); // new lines, indentation, white space
             else
                 Assert.Equal(53, jsonUtf8.BytesCommitted);
 
@@ -3675,14 +3686,14 @@ namespace System.Text.Json.Tests
 
             Assert.Equal(0, jsonUtf8.BytesCommitted);
             if (options.Indented)
-                Assert.Equal(17 + options.IndentSize + Environment.NewLine.Length + 1, jsonUtf8.BytesPending); // new lines, indentation, white space
+                Assert.Equal(17 + options.IndentSize + options.NewLine.Length + 1, jsonUtf8.BytesPending); // new lines, indentation, white space
             else
                 Assert.Equal(17, jsonUtf8.BytesPending);
 
             jsonUtf8.Flush();
 
             if (options.Indented)
-                Assert.Equal(17 + options.IndentSize + Environment.NewLine.Length + 1, jsonUtf8.BytesCommitted); // new lines, indentation, white space
+                Assert.Equal(17 + options.IndentSize + options.NewLine.Length + 1, jsonUtf8.BytesCommitted); // new lines, indentation, white space
             else
                 Assert.Equal(17, jsonUtf8.BytesCommitted);
 
@@ -3692,19 +3703,19 @@ namespace System.Text.Json.Tests
             jsonUtf8.WriteEndObject();
 
             if (options.Indented)
-                Assert.Equal(17 + options.IndentSize + Environment.NewLine.Length + 1, jsonUtf8.BytesCommitted);
+                Assert.Equal(17 + options.IndentSize + options.NewLine.Length + 1, jsonUtf8.BytesCommitted);
             else
                 Assert.Equal(17, jsonUtf8.BytesCommitted);
 
             if (options.Indented)
-                Assert.Equal(18 + options.IndentSize + (2 * Environment.NewLine.Length) + 1, jsonUtf8.BytesPending); // new lines, indentation, white space
+                Assert.Equal(18 + options.IndentSize + (2 * options.NewLine.Length) + 1, jsonUtf8.BytesPending); // new lines, indentation, white space
             else
                 Assert.Equal(18, jsonUtf8.BytesPending);
 
             jsonUtf8.Flush();
 
             if (options.Indented)
-                Assert.Equal(35 + (2 * options.IndentSize) + (3 * Environment.NewLine.Length) + (1 * 2), jsonUtf8.BytesCommitted); // new lines, indentation, white space
+                Assert.Equal(35 + (2 * options.IndentSize) + (3 * options.NewLine.Length) + (1 * 2), jsonUtf8.BytesCommitted); // new lines, indentation, white space
             else
                 Assert.Equal(35, jsonUtf8.BytesCommitted);
 
@@ -4052,11 +4063,16 @@ namespace System.Text.Json.Tests
         private static string GetCommentExpectedString(JsonWriterOptions options)
         {
             var ms = new MemoryStream();
-            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true);
+            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true)
+            {
+                NewLine = options.NewLine
+            };
 
             var json = new JsonTextWriter(streamWriter)
             {
                 Formatting = options.Indented ? Formatting.Indented : Formatting.None,
+                IndentChar = options.IndentCharacter,
+                Indentation = options.IndentSize,
                 StringEscapeHandling = StringEscapeHandling.EscapeHtml,
             };
 
@@ -4078,7 +4094,7 @@ namespace System.Text.Json.Tests
 
             json.Flush();
 
-            return HandleIndent(Encoding.UTF8.GetString(ms.ToArray()), options);
+            return Encoding.UTF8.GetString(ms.ToArray());
         }
 
         [Theory]
@@ -6953,11 +6969,16 @@ namespace System.Text.Json.Tests
         private static string GetHelloWorldExpectedString(JsonWriterOptions options, string propertyName, string value)
         {
             var ms = new MemoryStream();
-            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true);
+            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true)
+            {
+                NewLine = options.NewLine
+            };
 
             var json = new JsonTextWriter(streamWriter)
             {
                 Formatting = options.Indented ? Formatting.Indented : Formatting.None,
+                IndentChar = options.IndentCharacter,
+                Indentation = options.IndentSize,
                 StringEscapeHandling = StringEscapeHandling.EscapeHtml
             };
 
@@ -6970,17 +6991,22 @@ namespace System.Text.Json.Tests
 
             json.Flush();
 
-            return HandleIndent(Encoding.UTF8.GetString(ms.ToArray()), options);
+            return Encoding.UTF8.GetString(ms.ToArray());
         }
 
         private static string GetBase64ExpectedString(JsonWriterOptions options, string propertyName, byte[] value)
         {
             var ms = new MemoryStream();
-            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true);
+            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true)
+            {
+                NewLine = options.NewLine
+            };
 
             var json = new JsonTextWriter(streamWriter)
             {
                 Formatting = options.Indented ? Formatting.Indented : Formatting.None,
+                IndentChar = options.IndentCharacter,
+                Indentation = options.IndentSize,
                 StringEscapeHandling = StringEscapeHandling.EscapeHtml
             };
 
@@ -6998,17 +7024,22 @@ namespace System.Text.Json.Tests
 
             json.Flush();
 
-            return HandleIndent(Encoding.UTF8.GetString(ms.ToArray()), options);
+            return Encoding.UTF8.GetString(ms.ToArray());
         }
 
         private static string GetCommentInArrayExpectedString(JsonWriterOptions options, string comment)
         {
             var ms = new MemoryStream();
-            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true);
+            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true)
+            {
+                NewLine = options.NewLine
+            };
 
             var json = new JsonTextWriter(streamWriter)
             {
                 Formatting = options.Indented ? Formatting.Indented : Formatting.None,
+                IndentChar = options.IndentCharacter,
+                Indentation = options.IndentSize,
                 StringEscapeHandling = StringEscapeHandling.EscapeHtml,
             };
 
@@ -7032,13 +7063,16 @@ namespace System.Text.Json.Tests
             json.WriteComment(comment);
             json.Flush();
 
-            return HandleIndent(Encoding.UTF8.GetString(ms.ToArray()), options);
+            return Encoding.UTF8.GetString(ms.ToArray());
         }
 
         private static string GetCommentInObjectExpectedString(JsonWriterOptions options, string comment)
         {
             var ms = new MemoryStream();
-            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true);
+            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true)
+            {
+                NewLine = options.NewLine
+            };
 
             var json = new JsonTextWriter(streamWriter)
             {
@@ -7104,11 +7138,16 @@ namespace System.Text.Json.Tests
         private static string GetStringsExpectedString(JsonWriterOptions options, string value)
         {
             var ms = new MemoryStream();
-            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true);
+            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true)
+            {
+                NewLine = options.NewLine
+            };
 
             var json = new JsonTextWriter(streamWriter)
             {
-                Formatting = options.Indented ? Formatting.Indented : Formatting.None
+                Formatting = options.Indented ? Formatting.Indented : Formatting.None,
+                IndentChar = options.IndentCharacter,
+                Indentation = options.IndentSize
             };
 
             json.WriteStartArray();
@@ -7118,7 +7157,7 @@ namespace System.Text.Json.Tests
 
             json.Flush();
 
-            return HandleIndent(Encoding.UTF8.GetString(ms.ToArray()), options);
+            return Encoding.UTF8.GetString(ms.ToArray());
         }
 
         private static string GetEscapedExpectedString(JsonWriterOptions options, string propertyName, string value, StringEscapeHandling escaping, bool escape = true)
@@ -7127,6 +7166,8 @@ namespace System.Text.Json.Tests
             using (var json = new JsonTextWriter(stringWriter)
             {
                 Formatting = options.Indented ? Formatting.Indented : Formatting.None,
+                IndentChar = options.IndentCharacter,
+                Indentation = options.IndentSize,
                 StringEscapeHandling = escaping
             })
             {
@@ -7136,18 +7177,23 @@ namespace System.Text.Json.Tests
                 json.WriteEnd();
 
                 json.Flush();
-                return HandleIndent(stringWriter.ToString(), options);
+                return stringWriter.ToString();
             }
         }
 
         private static string GetCustomExpectedString(JsonWriterOptions options)
         {
             var ms = new MemoryStream();
-            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true);
+            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true)
+            {
+                NewLine = options.NewLine
+            };
 
             var json = new JsonTextWriter(streamWriter)
             {
-                Formatting = options.Indented ? Formatting.Indented : Formatting.None
+                Formatting = options.Indented ? Formatting.Indented : Formatting.None,
+                IndentChar = options.IndentCharacter,
+                Indentation = options.IndentSize
             };
 
             json.WriteStartObject();
@@ -7160,17 +7206,22 @@ namespace System.Text.Json.Tests
 
             json.Flush();
 
-            return HandleIndent(Encoding.UTF8.GetString(ms.ToArray()), options);
+            return Encoding.UTF8.GetString(ms.ToArray());
         }
 
         private static string GetStartEndExpectedString(JsonWriterOptions options)
         {
             var ms = new MemoryStream();
-            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true);
+            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true)
+            {
+                NewLine = options.NewLine
+            };
 
             var json = new JsonTextWriter(streamWriter)
             {
-                Formatting = options.Indented ? Formatting.Indented : Formatting.None
+                Formatting = options.Indented ? Formatting.Indented : Formatting.None,
+                IndentChar = options.IndentCharacter,
+                Indentation = options.IndentSize
             };
 
             json.WriteStartArray();
@@ -7180,17 +7231,22 @@ namespace System.Text.Json.Tests
 
             json.Flush();
 
-            return HandleIndent(Encoding.UTF8.GetString(ms.ToArray()), options);
+            return Encoding.UTF8.GetString(ms.ToArray());
         }
 
         private static string GetStartEndWithPropertyArrayExpectedString(JsonWriterOptions options)
         {
             var ms = new MemoryStream();
-            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true);
+            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true)
+            {
+                NewLine = options.NewLine
+            };
 
             var json = new JsonTextWriter(streamWriter)
             {
-                Formatting = options.Indented ? Formatting.Indented : Formatting.None
+                Formatting = options.Indented ? Formatting.Indented : Formatting.None,
+                IndentChar = options.IndentCharacter,
+                Indentation = options.IndentSize
             };
 
             json.WriteStartObject();
@@ -7201,17 +7257,22 @@ namespace System.Text.Json.Tests
 
             json.Flush();
 
-            return HandleIndent(Encoding.UTF8.GetString(ms.ToArray()), options);
+            return Encoding.UTF8.GetString(ms.ToArray());
         }
 
         private static string GetStartEndWithPropertyArrayExpectedString(string key, JsonWriterOptions options, bool escape = false)
         {
             var ms = new MemoryStream();
-            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true);
+            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true)
+            {
+                NewLine = options.NewLine
+            };
 
             var json = new JsonTextWriter(streamWriter)
             {
                 Formatting = options.Indented ? Formatting.Indented : Formatting.None,
+                IndentChar = options.IndentCharacter,
+                Indentation = options.IndentSize,
                 StringEscapeHandling = StringEscapeHandling.EscapeHtml
             };
 
@@ -7223,17 +7284,22 @@ namespace System.Text.Json.Tests
 
             json.Flush();
 
-            return HandleIndent(Encoding.UTF8.GetString(ms.ToArray()), options);
+            return Encoding.UTF8.GetString(ms.ToArray());
         }
 
         private static string GetStartEndWithPropertyObjectExpectedString(JsonWriterOptions options)
         {
             var ms = new MemoryStream();
-            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true);
+            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true)
+            {
+                NewLine = options.NewLine
+            };
 
             var json = new JsonTextWriter(streamWriter)
             {
-                Formatting = options.Indented ? Formatting.Indented : Formatting.None
+                Formatting = options.Indented ? Formatting.Indented : Formatting.None,
+                IndentChar = options.IndentCharacter,
+                Indentation = options.IndentSize
             };
 
             json.WriteStartObject();
@@ -7244,17 +7310,22 @@ namespace System.Text.Json.Tests
 
             json.Flush();
 
-            return HandleIndent(Encoding.UTF8.GetString(ms.ToArray()), options);
+            return Encoding.UTF8.GetString(ms.ToArray());
         }
 
         private static string GetStartEndWithPropertyObjectExpectedString(string key, JsonWriterOptions options, bool escape = false)
         {
             var ms = new MemoryStream();
-            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true);
+            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true)
+            {
+                NewLine = options.NewLine
+            };
 
             var json = new JsonTextWriter(streamWriter)
             {
                 Formatting = options.Indented ? Formatting.Indented : Formatting.None,
+                IndentChar = options.IndentCharacter,
+                Indentation = options.IndentSize,
                 StringEscapeHandling = StringEscapeHandling.EscapeHtml
             };
 
@@ -7266,17 +7337,22 @@ namespace System.Text.Json.Tests
 
             json.Flush();
 
-            return HandleIndent(Encoding.UTF8.GetString(ms.ToArray()), options);
+            return Encoding.UTF8.GetString(ms.ToArray());
         }
 
         private static string GetArrayWithPropertyExpectedString(JsonWriterOptions options)
         {
             var ms = new MemoryStream();
-            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true);
+            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true)
+            {
+                NewLine = options.NewLine
+            };
 
             var json = new JsonTextWriter(streamWriter)
             {
-                Formatting = options.Indented ? Formatting.Indented : Formatting.None
+                Formatting = options.Indented ? Formatting.Indented : Formatting.None,
+                IndentChar = options.IndentCharacter,
+                Indentation = options.IndentSize
             };
 
             json.WriteStartObject();
@@ -7286,17 +7362,22 @@ namespace System.Text.Json.Tests
             json.WriteEndObject();
             json.Flush();
 
-            return HandleIndent(Encoding.UTF8.GetString(ms.ToArray()), options);
+            return Encoding.UTF8.GetString(ms.ToArray());
         }
 
         private static string GetBooleanExpectedString(JsonWriterOptions options, string keyString, bool value, bool escape = false)
         {
             var ms = new MemoryStream();
-            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true);
+            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true)
+            {
+                NewLine = options.NewLine
+            };
 
             var json = new JsonTextWriter(streamWriter)
             {
                 Formatting = options.Indented ? Formatting.Indented : Formatting.None,
+                IndentChar = options.IndentCharacter,
+                Indentation = options.IndentSize,
                 StringEscapeHandling = StringEscapeHandling.EscapeHtml,
             };
 
@@ -7316,17 +7397,22 @@ namespace System.Text.Json.Tests
 
             json.Flush();
 
-            return HandleIndent(Encoding.UTF8.GetString(ms.ToArray()), options);
+            return Encoding.UTF8.GetString(ms.ToArray());
         }
 
         private static string GetNullExpectedString(JsonWriterOptions options, string keyString, bool escape = false)
         {
             var ms = new MemoryStream();
-            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true);
+            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true)
+            {
+                NewLine = options.NewLine
+            };
 
             var json = new JsonTextWriter(streamWriter)
             {
                 Formatting = options.Indented ? Formatting.Indented : Formatting.None,
+                IndentChar = options.IndentCharacter,
+                Indentation = options.IndentSize,
                 StringEscapeHandling = StringEscapeHandling.EscapeHtml,
             };
 
@@ -7346,7 +7432,7 @@ namespace System.Text.Json.Tests
 
             json.Flush();
 
-            return HandleIndent(Encoding.UTF8.GetString(ms.ToArray()), options);
+            return Encoding.UTF8.GetString(ms.ToArray());
         }
 
         private static string GetPropertyExpectedString<T>(JsonWriterOptions options, T value)
@@ -7356,7 +7442,9 @@ namespace System.Text.Json.Tests
 
             var json = new JsonTextWriter(stringWriter)
             {
-                Formatting = options.Indented ? Formatting.Indented : Formatting.None
+                Formatting = options.Indented ? Formatting.Indented : Formatting.None,
+                IndentChar = options.IndentCharacter,
+                Indentation = options.IndentSize
             };
 
             json.WriteStartObject();
@@ -7366,17 +7454,22 @@ namespace System.Text.Json.Tests
 
             json.Flush();
 
-            return HandleIndent(sb.ToString(), options);
+            return sb.ToString();
         }
 
         private static string GetNumbersExpectedString(JsonWriterOptions options, string keyString, int[] ints, uint[] uints, long[] longs, ulong[] ulongs, float[] floats, double[] doubles, decimal[] decimals, bool escape = false)
         {
             var ms = new MemoryStream();
-            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true);
+            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true)
+            {
+                NewLine = options.NewLine
+            };
 
             var json = new JsonTextWriter(streamWriter)
             {
-                Formatting = options.Indented ? Formatting.Indented : Formatting.None
+                Formatting = options.Indented ? Formatting.Indented : Formatting.None,
+                IndentChar = options.IndentCharacter,
+                Indentation = options.IndentSize
             };
 
             json.WriteStartObject();
@@ -7432,7 +7525,7 @@ namespace System.Text.Json.Tests
 
             json.Flush();
 
-            return HandleIndent(Encoding.UTF8.GetString(ms.ToArray()), options);
+            return Encoding.UTF8.GetString(ms.ToArray());
         }
 
         private static string GetExpectedString_RelaxedEscaping(bool prettyPrint, string keyString)
@@ -7466,11 +7559,16 @@ namespace System.Text.Json.Tests
         private static string GetGuidsExpectedString(JsonWriterOptions options, string keyString, Guid[] guids, bool escape = false)
         {
             var ms = new MemoryStream();
-            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true);
+            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true)
+            {
+                NewLine = options.NewLine
+            };
 
             var json = new JsonTextWriter(streamWriter)
             {
                 Formatting = options.Indented ? Formatting.Indented : Formatting.None,
+                IndentChar = options.IndentCharacter,
+                Indentation = options.IndentSize,
                 StringEscapeHandling = StringEscapeHandling.EscapeHtml
             };
 
@@ -7492,7 +7590,7 @@ namespace System.Text.Json.Tests
 
             json.Flush();
 
-            return HandleIndent(Encoding.UTF8.GetString(ms.ToArray()), options);
+            return Encoding.UTF8.GetString(ms.ToArray());
         }
 
         private static string GetNumbersExpectedString<T>(JsonWriterOptions options, int numberOfElements, T value)
@@ -7503,6 +7601,8 @@ namespace System.Text.Json.Tests
             var json = new JsonTextWriter(stringWriter)
             {
                 Formatting = options.Indented ? Formatting.Indented : Formatting.None,
+                IndentChar = options.IndentCharacter,
+                Indentation = options.IndentSize
             };
 
             json.WriteStartArray();
@@ -7514,17 +7614,22 @@ namespace System.Text.Json.Tests
 
             json.Flush();
 
-            return HandleIndent(sb.ToString(), options);
+            return sb.ToString();
         }
 
         private static string GetDatesExpectedString(JsonWriterOptions options, string keyString, DateTime[] dates, bool escape = false)
         {
             var ms = new MemoryStream();
-            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true);
+            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true)
+            {
+                NewLine = options.NewLine
+            };
 
             var json = new JsonTextWriter(streamWriter)
             {
                 Formatting = options.Indented ? Formatting.Indented : Formatting.None,
+                IndentChar = options.IndentCharacter,
+                Indentation = options.IndentSize,
                 StringEscapeHandling = StringEscapeHandling.EscapeHtml,
             };
 
@@ -7546,17 +7651,22 @@ namespace System.Text.Json.Tests
 
             json.Flush();
 
-            return HandleIndent(Encoding.UTF8.GetString(ms.ToArray()), options);
+            return Encoding.UTF8.GetString(ms.ToArray());
         }
 
         private static string GetDatesExpectedString(JsonWriterOptions options, string keyString, DateTimeOffset[] dates, bool escape = false)
         {
             var ms = new MemoryStream();
-            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true);
+            TextWriter streamWriter = new StreamWriter(ms, new UTF8Encoding(false), 1024, true)
+            {
+                NewLine = options.NewLine
+            };
 
             var json = new JsonTextWriter(streamWriter)
             {
                 Formatting = options.Indented ? Formatting.Indented : Formatting.None,
+                IndentChar = options.IndentCharacter,
+                Indentation = options.IndentSize,
                 StringEscapeHandling = StringEscapeHandling.EscapeHtml,
             };
 
@@ -7578,7 +7688,7 @@ namespace System.Text.Json.Tests
 
             json.Flush();
 
-            return HandleIndent(Encoding.UTF8.GetString(ms.ToArray()), options);
+            return Encoding.UTF8.GetString(ms.ToArray());
         }
 
         private static void CompensateWhitespaces(bool prettyPrint, JsonTextWriter json, TextWriter streamWriter, int whitespaceCount = 1)
@@ -7628,13 +7738,15 @@ namespace System.Text.Json.Tests
                    from skipValidation in new[] { true, false }
                    from indentCharacter in indented ? new char?[] { null, ' ', '\t' } : []
                    from indentSize in indented ? new int?[] { null, 0, 1, 2, 127 } : []
-                   select CreateOptions(indented, indentCharacter, indentSize, skipValidation);
+                   from newLine in indented ? new string?[] { null, "\n", "\r\n" } : []
+                   select CreateOptions(indented, indentCharacter, indentSize, newLine, skipValidation);
 
-            static JsonWriterOptions CreateOptions(bool indented, char? indentCharacter, int? indentSize, bool skipValidation)
+            static JsonWriterOptions CreateOptions(bool indented, char? indentCharacter, int? indentSize, string? newLine, bool skipValidation)
             {
                 var options = new JsonWriterOptions { Indented = indented, SkipValidation = skipValidation };
                 if (indentCharacter is not null) options.IndentCharacter = (char)indentCharacter;
                 if (indentSize is not null) options.IndentSize = (int)indentSize;
+                if (newLine is not null) options.NewLine = (string)newLine;
                 return options;
             }
         }

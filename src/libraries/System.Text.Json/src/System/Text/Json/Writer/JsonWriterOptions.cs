@@ -85,6 +85,25 @@ namespace System.Text.Json
             _ => value
         };
 
+
+        /// <summary>
+        /// Defines the new-line characterq used by <see cref="Utf8JsonWriter"/> when <see cref="Indented"/> is enabled. Defaults to <see cref="Environment.NewLine"/>.
+        /// </summary>
+        /// <remarks>Allowed values are '\n' and '\r\n'.</remarks>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="value"/> contains an invalid value.</exception>
+        public string NewLine
+        {
+            readonly get => (_optionsMask & NewLineMask) != 0 ^ Environment.NewLine is JsonConstants.LineFeedNewLine ? JsonConstants.LineFeedNewLine : JsonConstants.CarriageReturnAndLineFeedNewLine;
+            set
+            {
+                JsonWriterHelper.ValidateNewLine(value);
+                if (value != Environment.NewLine)
+                    _optionsMask |= NewLineMask;
+                else
+                    _optionsMask &= ~NewLineMask;
+            }
+        }
+
         /// <summary>
         /// Gets or sets the maximum depth allowed when writing JSON, with the default (i.e. 0) indicating a max depth of 1000.
         /// </summary>
@@ -141,5 +160,6 @@ namespace System.Text.Json
         private const int SkipValidationBit = 2;
         private const int IndentCharacterBit = 4;
         private const int IndentSizeMask = JsonConstants.MaximumIndentSize << 3;
+        private const int NewLineMask = 1 << 10;
     }
 }

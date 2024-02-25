@@ -283,6 +283,7 @@ namespace System.Text.Json.SourceGeneration
                 bool? writeIndented = null;
                 char? indentCharacter = null;
                 int? indentSize = null;
+                string? newLine = null;
 
                 if (attributeData.ConstructorArguments.Length > 0)
                 {
@@ -388,6 +389,10 @@ namespace System.Text.Json.SourceGeneration
                             indentSize = (int)namedArg.Value.Value!;
                             break;
 
+                        case nameof(JsonSourceGenerationOptionsAttribute.NewLine):
+                            newLine = (string)namedArg.Value.Value!;
+                            break;
+
                         case nameof(JsonSourceGenerationOptionsAttribute.GenerationMode):
                             generationMode = (JsonSourceGenerationMode)namedArg.Value.Value!;
                             break;
@@ -422,6 +427,7 @@ namespace System.Text.Json.SourceGeneration
                     WriteIndented = writeIndented,
                     IndentCharacter = indentCharacter,
                     IndentSize = indentSize,
+                    NewLine = newLine
                 };
             }
 

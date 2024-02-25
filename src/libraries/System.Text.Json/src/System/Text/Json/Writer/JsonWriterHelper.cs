@@ -51,6 +51,13 @@ namespace System.Text.Json
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void ValidateNewLine(string value)
+        {
+            if (value is not JsonConstants.LineFeedNewLine and not JsonConstants.CarriageReturnAndLineFeedNewLine)
+                ThrowHelper.ThrowArgumentOutOfRangeException_NewLine(nameof(value));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void ValidateProperty(ReadOnlySpan<byte> propertyName)
         {
             if (propertyName.Length > JsonConstants.MaxUnescapedTokenSize)

@@ -136,9 +136,14 @@ namespace System.Text.Json.Serialization
         public char IndentCharacter { get; set; }
 
         /// <summary>
-        /// Specifies the default value of <see cref="JsonSerializerOptions.IndentCharacter"/> when set.
+        /// Specifies the default value of <see cref="JsonSerializerOptions.IndentSize"/> when set.
         /// </summary>
         public int IndentSize { get; set; }
+
+        /// <summary>
+        /// Specifies the default value of <see cref="JsonSerializerOptions.NewLine"/> when set.
+        /// </summary>
+        public string? NewLine { get; set; }
 
         /// <summary>
         /// Specifies the default source generation mode for type declarations that don't set a <see cref="JsonSerializableAttribute.GenerationMode"/>.

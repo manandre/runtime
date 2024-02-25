@@ -398,6 +398,7 @@ namespace System.Text.Json
         public bool WriteIndented { get { throw null; } set { } }
         public char IndentCharacter { get { throw null; } set { } }
         public int IndentSize { get { throw null; } set { } }
+        public string NewLine { get { throw null; } set { } }
         [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Never)]
         [System.ObsoleteAttribute("JsonSerializerOptions.AddContext is obsolete. To register a JsonSerializerContext, use either the TypeInfoResolver or TypeInfoResolverChain properties.", DiagnosticId="SYSLIB0049", UrlFormat="https://aka.ms/dotnet-warnings/{0}")]
         public void AddContext<TContext>() where TContext : System.Text.Json.Serialization.JsonSerializerContext, new() { }
@@ -445,6 +446,7 @@ namespace System.Text.Json
         public bool Indented { get { throw null; } set { } }
         public char IndentCharacter { get { throw null; } set { } }
         public int IndentSize { get { throw null; } set { } }
+        public string NewLine { get { throw null; } set { } }
         public int MaxDepth { readonly get { throw null; } set { } }
         public bool SkipValidation { get { throw null; } set { } }
     }
@@ -1083,6 +1085,7 @@ namespace System.Text.Json.Serialization
         public bool WriteIndented { get { throw null; } set { } }
         public char IndentCharacter { get { throw null; } set { } }
         public int IndentSize { get { throw null; } set { } }
+        public string NewLine { get { throw null; } set { } }
     }
     [System.Diagnostics.CodeAnalysis.RequiresDynamicCodeAttribute("JsonStringEnumConverter cannot be statically analyzed and requires runtime code generation. Applications should use the generic JsonStringEnumConverter<TEnum> instead.")]
     public partial class JsonStringEnumConverter : System.Text.Json.Serialization.JsonConverterFactory

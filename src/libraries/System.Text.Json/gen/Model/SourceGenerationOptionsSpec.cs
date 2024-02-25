@@ -58,6 +58,8 @@ namespace System.Text.Json.SourceGeneration
 
         public required int? IndentSize { get; init; }
 
+        public required string? NewLine { get; init; }
+
         public JsonKnownNamingPolicy? GetEffectivePropertyNamingPolicy()
             => PropertyNamingPolicy ?? (Defaults is JsonSerializerDefaults.Web ? JsonKnownNamingPolicy.CamelCase : null);
     }

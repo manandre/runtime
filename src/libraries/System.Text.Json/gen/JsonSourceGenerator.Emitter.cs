@@ -1,4 +1,4 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
@@ -1176,6 +1176,9 @@ namespace System.Text.Json.SourceGeneration
 
                 if (optionsSpec.IndentSize is int indentSize)
                     writer.WriteLine($"IndentSize = {indentSize},");
+
+                if (optionsSpec.NewLine is string newLine)
+                    writer.WriteLine($"NewLine = {FormatStringLiteral(newLine)},");
 
                 writer.Indentation--;
                 writer.WriteLine("};");

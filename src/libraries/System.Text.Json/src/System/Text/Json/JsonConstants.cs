@@ -122,5 +122,7 @@ namespace System.Text.Json
         public const int MinimumIndentSize = 0;
         public const int MaximumIndentSize = 127; // If this value is changed, the impact on the options masking used in the JsonWriterOptions struct must be checked carefully.
 
+        public const string LineFeedNewLine = "\n";
+        public const string CarriageReturnAndLineFeedNewLine = "\r\n";
     }
 }

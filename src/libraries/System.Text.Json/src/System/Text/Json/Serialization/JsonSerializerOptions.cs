@@ -93,6 +93,7 @@ namespace System.Text.Json
         private bool _writeIndented;
         private char _indentCharacter = JsonConstants.DefaultIndentCharacter;
         private int _indentSize = JsonConstants.DefaultIndentSize;
+        private string _newLine = Environment.NewLine;
 
         /// <summary>
         /// Constructs a new <see cref="JsonSerializerOptions"/> instance.
@@ -145,6 +146,7 @@ namespace System.Text.Json
             _writeIndented = options._writeIndented;
             _indentCharacter = options._indentCharacter;
             _indentSize = options._indentSize;
+            _newLine = options._newLine;
             _typeInfoResolver = options._typeInfoResolver;
             EffectiveMaxDepth = options.EffectiveMaxDepth;
             ReferenceHandlingStrategy = options.ReferenceHandlingStrategy;
@@ -733,6 +735,28 @@ namespace System.Text.Json
                 JsonWriterHelper.ValidateIndentSize(value);
                 VerifyMutable();
                 _indentSize = value;
+            }
+        }
+
+        /// <summary>
+        /// Defines the new-line characters being used when <see cref="WriteIndented" /> is enabled. Defaults to <see cref="Environment.NewLine"/>.
+        /// </summary>
+        /// <remarks>Allowed values are '\n' and '\r\n'.</remarks>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="value"/> contains an invalid value.</exception>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown if this property is set after serialization or deserialization has occurred.
+        /// </exception>
+        public string NewLine
+        {
+            get
+            {
+                return _newLine;
+            }
+            set
+            {
+                JsonWriterHelper.ValidateNewLine(value);
+                VerifyMutable();
+                _newLine = value;
             }
         }
 

@@ -17,6 +17,7 @@ namespace System.Text.Json.Tests
                 Indented = false,
                 IndentCharacter = ' ',
                 IndentSize = 2,
+                NewLine = Environment.NewLine,
                 SkipValidation = false,
                 MaxDepth = 0,
             };
@@ -33,6 +34,7 @@ namespace System.Text.Json.Tests
                 Indented = false,
                 IndentCharacter = ' ',
                 IndentSize = 2,
+                NewLine = Environment.NewLine,
                 SkipValidation = false,
                 MaxDepth = 0,
             };
@@ -40,16 +42,17 @@ namespace System.Text.Json.Tests
         }
 
         [Theory]
-        [InlineData(true, '\t', 1, true, 0)]
-        [InlineData(true, ' ', 127, false, 1)]
-        [InlineData(false, ' ', 0, true, 1024)]
-        [InlineData(false, ' ', 4, false, 1024 * 1024)]
-        public static void JsonWriterOptions(bool indented, char indentCharacter, int indentSize, bool skipValidation, int maxDepth)
+        [InlineData(true, '\t', 1, "\r\n", true, 0)]
+        [InlineData(true, ' ', 127, "\n", false, 1)]
+        [InlineData(false, ' ', 0, "\n", true, 1024)]
+        [InlineData(false, ' ', 4, "\n", false, 1024 * 1024)]
+        public static void JsonWriterOptions(bool indented, char indentCharacter, int indentSize, string newLine, bool skipValidation, int maxDepth)
         {
             var options = new JsonWriterOptions();
             options.Indented = indented;
             options.IndentCharacter = indentCharacter;
             options.IndentSize = indentSize;
+            options.NewLine = newLine;
             options.SkipValidation = skipValidation;
             options.MaxDepth = maxDepth;
 
@@ -58,6 +61,7 @@ namespace System.Text.Json.Tests
                 Indented = indented,
                 IndentCharacter = indentCharacter,
                 IndentSize = indentSize,
+                NewLine = newLine,
                 SkipValidation = skipValidation,
                 MaxDepth = maxDepth,
             };
@@ -65,22 +69,24 @@ namespace System.Text.Json.Tests
         }
 
         [Theory]
-        [InlineData(true, '\t', 1, true, 0)]
-        [InlineData(true, ' ', 127, false, 1)]
-        [InlineData(false, ' ', 0, true, 1024)]
-        [InlineData(false, ' ', 4, false, 1024 * 1024)]
-        public static void JsonWriterOptions_Properties(bool indented, char indentCharacter, int indentSize, bool skipValidation, int maxDepth)
+        [InlineData(true, '\t', 1, "\r\n", true, 0)]
+        [InlineData(true, ' ', 127, "\n", false, 1)]
+        [InlineData(false, ' ', 0, "\n", true, 1024)]
+        [InlineData(false, ' ', 4, "\n", false, 1024 * 1024)]
+        public static void JsonWriterOptions_Properties(bool indented, char indentCharacter, int indentSize, string newLine, bool skipValidation, int maxDepth)
         {
             var options = new JsonWriterOptions();
             options.Indented = indented;
             options.IndentCharacter = indentCharacter;
             options.IndentSize = indentSize;
+            options.NewLine = newLine;
             options.SkipValidation = skipValidation;
             options.MaxDepth = maxDepth;
 
             Assert.Equal(indented, options.Indented);
             Assert.Equal(indentCharacter, options.IndentCharacter);
             Assert.Equal(indentSize, options.IndentSize);
+            Assert.Equal(newLine, options.NewLine);
             Assert.Equal(skipValidation, options.SkipValidation);
             Assert.Equal(maxDepth, options.MaxDepth);
         }
@@ -93,6 +99,7 @@ namespace System.Text.Json.Tests
             Assert.False(options.Indented);
             Assert.Equal(' ', options.IndentCharacter);
             Assert.Equal(2, options.IndentSize);
+            Assert.Equal(Environment.NewLine, options.NewLine);
             Assert.False(options.SkipValidation);
             Assert.Equal(0, options.MaxDepth);
         }
@@ -114,6 +121,10 @@ namespace System.Text.Json.Tests
             options.IndentSize = 127;
             options.IndentSize = defaultOptions.IndentSize;
             Assert.Equal(defaultOptions.IndentSize, options.IndentSize);
+
+            options.NewLine = Environment.NewLine is "\n" ? "\r\n" : "\n";
+            options.NewLine = defaultOptions.NewLine;
+            Assert.Equal(defaultOptions.NewLine, options.NewLine);
 
             options.SkipValidation = true;
             options.SkipValidation = defaultOptions.SkipValidation;
@@ -156,6 +167,20 @@ namespace System.Text.Json.Tests
         {
             var options = new JsonWriterOptions();
             Assert.Throws<ArgumentOutOfRangeException>(() => options.IndentSize = size);
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("\f")]
+        [InlineData("\r")]
+        [InlineData("\t")]
+        [InlineData("\r\r")]
+        [InlineData("\n\r")]
+        [InlineData("\n\n")]
+        public static void JsonWriterOptions_NewLine_InvalidValue(string value)
+        {
+            var options = new JsonWriterOptions();
+            Assert.Throws<ArgumentOutOfRangeException>(() => options.NewLine = value);
         }
     }
 }

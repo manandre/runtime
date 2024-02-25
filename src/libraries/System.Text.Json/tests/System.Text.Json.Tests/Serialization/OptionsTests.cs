@@ -66,6 +66,9 @@ namespace System.Text.Json.Serialization.Tests
             Assert.Equal(JsonCommentHandling.Disallow, options.ReadCommentHandling);
             Assert.Equal(JsonUnmappedMemberHandling.Skip, options.UnmappedMemberHandling);
             Assert.False(options.WriteIndented);
+            Assert.Equal(' ', options.IndentCharacter);
+            Assert.Equal(2, options.IndentSize);
+            Assert.Equal(Environment.NewLine, options.NewLine);
 
             TestIListNonThrowingOperationsWhenImmutable(options.Converters, tc);
             TestIListNonThrowingOperationsWhenImmutable(options.TypeInfoResolverChain, options.TypeInfoResolver);
@@ -84,6 +87,9 @@ namespace System.Text.Json.Serialization.Tests
             Assert.Throws<InvalidOperationException>(() => options.ReadCommentHandling = options.ReadCommentHandling);
             Assert.Throws<InvalidOperationException>(() => options.UnmappedMemberHandling = options.UnmappedMemberHandling);
             Assert.Throws<InvalidOperationException>(() => options.WriteIndented = options.WriteIndented);
+            Assert.Throws<InvalidOperationException>(() => options.IndentCharacter = options.IndentCharacter);
+            Assert.Throws<InvalidOperationException>(() => options.IndentSize = options.IndentSize);
+            Assert.Throws<InvalidOperationException>(() => options.NewLine = options.NewLine);
             Assert.Throws<InvalidOperationException>(() => options.TypeInfoResolver = options.TypeInfoResolver);
 
             TestIListThrowingOperationsWhenImmutable(options.Converters, tc);
@@ -413,6 +419,57 @@ namespace System.Text.Json.Serialization.Tests
             options.IndentSize = 4;
             json = JsonSerializer.Serialize(obj, options);
             Assert.Contains(new string(tab, 4), json);
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("\f")]
+        [InlineData("\r")]
+        [InlineData("\t")]
+        [InlineData("\r\r")]
+        [InlineData("\n\r")]
+        [InlineData("\n\n")]
+        public static void NewLine_WithInvalidValue_ThrowsArgumentOutOfRangeException(string value)
+        {
+            var options = new JsonSerializerOptions();
+            Assert.Throws<ArgumentOutOfRangeException>(() => options.NewLine = value);
+        }
+
+        [Fact]
+        public static void NewLine()
+        {
+            var obj = new BasicCompany();
+            obj.Initialize();
+
+            // Verify default value.
+            var defaultNewLine = Environment.NewLine;
+            string json = JsonSerializer.Serialize(obj);
+            Assert.DoesNotContain(defaultNewLine, json);
+
+            // Verify default value on options.
+            var options = new JsonSerializerOptions();
+            json = JsonSerializer.Serialize(obj, options);
+            Assert.DoesNotContain(defaultNewLine, json);
+
+            // Enable default indentation.
+            options = new JsonSerializerOptions();
+            options.WriteIndented = true;
+            json = JsonSerializer.Serialize(obj, options);
+            Assert.Contains(defaultNewLine, json);
+
+            // Set custom newLine without enabling indentation
+            var newLine = Environment.NewLine is "\n" ? "\r\n" : "\n";
+            options = new JsonSerializerOptions();
+            options.NewLine = newLine;
+            json = JsonSerializer.Serialize(obj, options);
+            Assert.DoesNotContain(newLine, json);
+
+            // Set custom indentCharacter with indentation enabled
+            options = new JsonSerializerOptions();
+            options.WriteIndented = true;
+            options.NewLine = newLine;
+            json = JsonSerializer.Serialize(obj, options);
+            Assert.Contains(newLine, json);
         }
 
         [Fact]
@@ -1414,9 +1471,13 @@ namespace System.Text.Json.Serialization.Tests
                 {
                     property.SetValue(options, 32);
                 }
+                else if (propertyType == typeof(char))
+                {
+                    property.SetValue(options, '\t');
+                }
                 else if (propertyType == typeof(string))
                 {
-                    property.SetValue(options, "\t");
+                    property.SetValue(options, "\r\n");
                 }
                 else if (propertyType == typeof(IList<JsonConverter>))
                 {

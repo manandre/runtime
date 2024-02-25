@@ -81,6 +81,7 @@ namespace System.Text.Json.SourceGeneration.Tests
                 WriteIndented = true,
                 IndentCharacter = '\t',
                 IndentSize = 1,
+                NewLine = "\r\n",
 
                 TypeInfoResolver = ContextWithAllOptionsSet.Default,
             };
@@ -110,7 +111,8 @@ namespace System.Text.Json.SourceGeneration.Tests
             UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
             WriteIndented = true,
             IndentCharacter = '\t',
-            IndentSize = 1)]
+            IndentSize = 1,
+            NewLine = "\r\n")]
         [JsonSerializable(typeof(PersonStruct))]
         public partial class ContextWithAllOptionsSet : JsonSerializerContext
         { }
