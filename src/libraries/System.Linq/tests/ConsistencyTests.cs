@@ -46,7 +46,6 @@ namespace System.Linq.Tests
                 nameof(Enumerable.TryGetNonEnumeratedCount),
                 nameof(Enumerable.Reverse),
                 "Fold",
-                "LeftJoin",
             };
 
             return result;
