@@ -16,6 +16,7 @@ namespace System.Net.Http.Functional.Tests
             List<object[]> staticHttpMethods = new List<object[]>
             {
                 new object[] { HttpMethod.Get },
+                new object[] { HttpMethod.Query },
                 new object[] { HttpMethod.Put },
                 new object[] { HttpMethod.Post },
                 new object[] { HttpMethod.Delete },
@@ -31,6 +32,7 @@ namespace System.Net.Http.Functional.Tests
         public void StaticProperties_VerifyValues_PropertyNameMatchesHttpMethodName()
         {
             Assert.Equal("GET", HttpMethod.Get.Method);
+            Assert.Equal("QUERY", HttpMethod.Query.Method);
             Assert.Equal("PUT", HttpMethod.Put.Method);
             Assert.Equal("POST", HttpMethod.Post.Method);
             Assert.Equal("DELETE", HttpMethod.Delete.Method);
@@ -155,6 +157,7 @@ namespace System.Net.Http.Functional.Tests
             yield return new object[] { HttpMethod.Connect, nameof(HttpMethod.Connect) };
             yield return new object[] { HttpMethod.Delete, nameof(HttpMethod.Delete) };
             yield return new object[] { HttpMethod.Get, nameof(HttpMethod.Get) };
+            yield return new object[] { HttpMethod.Query, nameof(HttpMethod.Query) };
             yield return new object[] { HttpMethod.Head, nameof(HttpMethod.Head) };
             yield return new object[] { HttpMethod.Options, nameof(HttpMethod.Options) };
             yield return new object[] { HttpMethod.Patch, nameof(HttpMethod.Patch) };

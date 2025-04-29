@@ -34,11 +34,11 @@ namespace System.Net.Http.Functional.Tests
         public static readonly object[][] Http2NoPushGetUris = Configuration.Http.Http2NoPushGetUris;
 
         // Standard HTTP methods defined in RFC7231: http://tools.ietf.org/html/rfc7231#section-4.3
-        //     "GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS", "TRACE"
+        //     "GET", "QUERY", "HEAD", "POST", "PUT", "DELETE", "OPTIONS", "TRACE"
         public static readonly IEnumerable<object[]> HttpMethods =
-            GetMethods("GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS", "TRACE", "CUSTOM1");
+            GetMethods("GET", "QUERY", "HEAD", "POST", "PUT", "DELETE", "OPTIONS", "TRACE", "CUSTOM1");
         public static readonly IEnumerable<object[]> HttpMethodsThatAllowContent =
-            GetMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "CUSTOM1");
+            GetMethods("GET", "QUERY", "POST", "PUT", "DELETE", "OPTIONS", "CUSTOM1");
         public static readonly IEnumerable<object[]> HttpMethodsThatDontAllowContent =
             GetMethods("HEAD", "TRACE");
 

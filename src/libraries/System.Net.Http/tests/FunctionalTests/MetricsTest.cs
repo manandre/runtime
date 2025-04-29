@@ -686,6 +686,9 @@ namespace System.Net.Http.Functional.Tests
         {
             { "GET", "GET" },
             { "get", "GET" },
+            { "query", "QUERY" },
+            { "QUERY", "QUERY" },
+            { "Query", "QUERY" },
             { "PUT", "PUT" },
             { "Put", "PUT" },
             { "POST", "POST" },

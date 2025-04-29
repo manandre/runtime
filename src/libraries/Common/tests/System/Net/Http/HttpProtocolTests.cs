@@ -466,6 +466,7 @@ namespace System.Net.Http.Functional.Tests
 
         [Theory]
         [InlineData("get", "GET")]
+        [InlineData("query", "QUERY")]
         [InlineData("head", "HEAD")]
         [InlineData("post", "POST")]
         [InlineData("put", "PUT")]
