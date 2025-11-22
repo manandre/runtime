@@ -37,8 +37,10 @@
     <Compile Include="System\Linq\Intersect.cs" />
     <Compile Include="System\Linq\Iterator.cs" />
     <Compile Include="System\Linq\Iterator.SpeedOpt.cs" />
+    <Compile Include="System\Linq\Join.Tuple.cs" />
     <Compile Include="System\Linq\Join.cs" />
     <Compile Include="System\Linq\Last.cs" />
+    <Compile Include="System\Linq\LeftJoin.Tuple.cs" />
     <Compile Include="System\Linq\LeftJoin.cs" />
     <Compile Include="System\Linq\Lookup.cs" />
     <Compile Include="System\Linq\Lookup.SpeedOpt.cs" />
@@ -55,6 +57,7 @@
     <Compile Include="System\Linq\Range.SpeedOpt.cs" />
     <Compile Include="System\Linq\Repeat.cs" />
     <Compile Include="System\Linq\Repeat.SpeedOpt.cs" />
+    <Compile Include="System\Linq\RightJoin.Tuple.cs" />
     <Compile Include="System\Linq\Shuffle.SpeedOpt.cs" />
     <Compile Include="System\Linq\Shuffle.cs" />
     <Compile Include="System\Linq\Reverse.cs" />
