@@ -8,20 +8,20 @@ namespace System.Linq.Tests
 {
     public class RightJoinTupleTests : EnumerableTests
     {
-        public struct CustomerRec
+        public record CustomerRec
         {
             public string name;
             public int custID;
         }
 
-        public struct OrderRec
+        public record OrderRec
         {
             public int orderID;
             public int custID;
             public int total;
         }
 
-        public struct AnagramRec
+        public record AnagramRec
         {
             public string name;
             public int orderID;
