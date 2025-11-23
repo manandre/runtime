@@ -74,10 +74,10 @@ namespace System.Linq
         /// /*
         ///  This code produces the following output:
         ///
-        ///  NONE - Daisy
         ///  Adams, Terry - Barley
         ///  Adams, Terry - Boots
         ///  Weiss, Charlotte - Whiskers
+        ///  NONE - Daisy
         /// */
         /// </code>
         /// </example>
@@ -176,10 +176,10 @@ namespace System.Linq
         /// /*
         ///  This code produces the following output:
         ///
-        ///  NONE - Daisy
         ///  Adams, Terry - Barley
         ///  Adams, Terry - Boots
         ///  Weiss, Charlotte - Whiskers
+        ///  NONE - Daisy
         /// */
         /// </code>
         /// </example>

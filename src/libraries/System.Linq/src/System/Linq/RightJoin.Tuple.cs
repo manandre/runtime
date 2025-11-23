@@ -50,9 +50,8 @@ namespace System.Linq
         ///     List{Person} people = new List{Person} { terry, charlotte, tom };
         ///     List{Pet} pets = new List{Pet} { barley, boots, whiskers, daisy };
         ///
-        ///     // Create a list of Person-Pet pairs where
-        ///     // each element is an anonymous type that contains a
-        ///     // Pet's name and the name of the Person that owns the Pet.
+        ///     // Create a list of Person-Pet tuples that contains a Pet
+        ///     // and the Person that owns the Pet.
         ///     var query =
         ///         people.RightJoin(pets,
         ///             person => person,
@@ -70,10 +69,10 @@ namespace System.Linq
         /// /*
         ///  This code produces the following output:
         ///
-        ///  NONE - Daisy
         ///  Adams, Terry - Barley
         ///  Adams, Terry - Boots
         ///  Weiss, Charlotte - Whiskers
+        ///  NONE - Daisy
         /// */
         /// </code>
         /// </example>
@@ -148,9 +147,8 @@ namespace System.Linq
         ///     List{Person} people = new List{Person} { terry, charlotte, tom };
         ///     List{Pet} pets = new List{Pet} { barley, boots, whiskers, daisy };
         ///
-        ///     // Create a list of Person-Pet pairs where
-        ///     // each element is an anonymous type that contains a
-        ///     // Pet's name and the name of the Person that owns the Pet.
+        ///     // Create a list of Person-Pet tuples that contains a Pet
+        ///     // and the Person that owns the Pet.
         ///     var query =
         ///         people.RightJoin(pets,
         ///             person => person,
@@ -168,10 +166,10 @@ namespace System.Linq
         /// /*
         ///  This code produces the following output:
         ///
-        ///  NONE - Daisy
         ///  Adams, Terry - Barley
         ///  Adams, Terry - Boots
         ///  Weiss, Charlotte - Whiskers
+        ///  NONE - Daisy
         /// */
         /// </code>
         /// </example>
