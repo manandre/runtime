@@ -45,8 +45,10 @@
     <Compile Include="System\Linq\Intersect.cs" />
     <Compile Include="System\Linq\IntersectBy.cs" />
     <Compile Include="System\Linq\Join.cs" />
+    <Compile Include="System\Linq\Join.Tuple.cs" />
     <Compile Include="System\Linq\LastAsync.cs" />
     <Compile Include="System\Linq\LeftJoin.cs" />
+    <Compile Include="System\Linq\LeftJoin.Tuple.cs" />
     <Compile Include="System\Linq\MaxAsync.cs" />
     <Compile Include="System\Linq\MaxByAsync.cs" />
     <Compile Include="System\Linq\MinAsync.cs" />
@@ -58,6 +60,7 @@
     <Compile Include="System\Linq\Repeat.cs" />
     <Compile Include="System\Linq\Reverse.cs" />
     <Compile Include="System\Linq\RightJoin.cs" />
+    <Compile Include="System\Linq\RightJoin.Tuple.cs" />
     <Compile Include="System\Linq\Select.cs" />
     <Compile Include="System\Linq\SelectMany.cs" />
     <Compile Include="System\Linq\SequenceEqualAsync.cs" />

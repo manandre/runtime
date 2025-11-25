@@ -22,6 +22,7 @@
     <Compile Include="DefaultIfEmptyTests.cs" />
     <Compile Include="DistinctByTests.cs" />
     <Compile Include="DistinctTests.cs" />
+    <Compile Include="LeftJoinTupleTests.cs" />
     <Compile Include="ElementAtAsyncTests.cs" />
     <Compile Include="ElementAtOrDefaultAsyncTests.cs" />
     <Compile Include="EmptyTests.cs" />
@@ -34,6 +35,7 @@
     <Compile Include="IndexTests.cs" />
     <Compile Include="IntersectByTests.cs" />
     <Compile Include="IntersectTests.cs" />
+    <Compile Include="JoinTupleTests.cs" />
     <Compile Include="JoinTests.cs" />
     <Compile Include="LastAsyncTests.cs" />
     <Compile Include="LastOrDefaultAsyncTests.cs" />
@@ -49,6 +51,7 @@
     <Compile Include="RangeTests.cs" />
     <Compile Include="RepeatTests.cs" />
     <Compile Include="ReverseTests.cs" />
+    <Compile Include="RightJoinTupleTests.cs" />
     <Compile Include="RightJoinTests.cs" />
     <Compile Include="SelectManyTests.cs" />
     <Compile Include="SelectTests.cs" />
