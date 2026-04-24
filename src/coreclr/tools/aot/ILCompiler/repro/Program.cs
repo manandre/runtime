@@ -2,53 +2,67 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 // Regression test for https://github.com/dotnet/runtime/issues/127179
-// Scanner/JIT mismatch when a runtime-async method awaits a non-runtime-async
-// Task-returning generic method from a generic context.
+//
+// A runtime-async method awaiting a non-runtime-async Task-returning generic method
+// in a shared-generic context (T = __Canon) causes NativeAOT to throw
+// System.InvalidOperationException at compile time WITHOUT the fix.
+//
+// Root cause: the ILC scanner incorrectly precomputes
+//   MethodDictionary(asyncVariant(Callee<__Canon>))
+// in the precomputed generic dictionary, while the JIT falls back to looking up
+//   MethodDictionary(original Callee<__Canon>)
+// because getAsyncOtherVariant detects that the async variant is a thunk.
+//
+// The callee must have RequiresInstMethodDescArg() == true so that a MethodDictionary
+// lookup is emitted. Using "new T[]" triggers this, because array creation requires
+// knowing the exact element type at runtime.
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 class Program
 {
     static int Main()
     {
-        var box1 = new Box<int>(42);
-        int result1 = box1.GetValueAsync().GetAwaiter().GetResult();
-        if (result1 != 42)
+        // Invoke with a reference type so T = __Canon is the shared canonical form
+        string result1 = AsyncSharedGenericCaller("hello").GetAwaiter().GetResult();
+        if (result1 != "hello-done")
         {
-            Console.WriteLine($"FAIL: Expected 42, got {result1}");
+            Console.WriteLine($"FAIL: Expected 'hello-done', got '{result1}'");
             return 1;
         }
 
-        var box2 = new Box<string>("hello");
-        string result2 = box2.GetValueAsync().GetAwaiter().GetResult();
-        if (result2 != "hello")
+        object result2 = AsyncSharedGenericCaller(new object()).GetAwaiter().GetResult();
+        if (result2 is null)
         {
-            Console.WriteLine($"FAIL: Expected 'hello', got '{result2}'");
+            Console.WriteLine("FAIL: result2 should not be null");
             return 1;
         }
 
         Console.WriteLine("PASS");
         return 100;
     }
-}
 
-// Non-runtime-async static generic Task-returning method
-static class Helper
-{
-    public static Task<T> IdentityAsync<T>(T value) => Task.FromResult(value);
-}
-
-// Generic class with a runtime-async method that awaits a non-runtime-async Task-returning method.
-// The ILC scanner must not precompute a MethodDictionary slot for the async variant of IdentityAsync<T>
-// while the JIT falls back to looking up the original, or vice versa.
-class Box<T>
-{
-    private T _value;
-    public Box(T value) { _value = value; }
-
-    public async Task<T> GetValueAsync()
+    // Non-runtime-async Task-returning generic method.
+    // "new T[1]" forces RequiresInstMethodDescArg() = true so the JIT must
+    // emit a MethodDictionary lookup for Callee<__Canon>.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    static Task<T> Callee<T>(T value)
     {
-        return await Helper.IdentityAsync(_value).ConfigureAwait(false);
+        T[] arr = new T[1];
+        arr[0] = value;
+        return Task.FromResult(arr[0]);
+    }
+
+    // Runtime-async generic caller — compiled as MethodImplAttributes.Async.
+    // Awaiting Callee<T> in a shared generic context triggers the scanner/JIT mismatch
+    // WITHOUT the method.IsAsync fix.
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    static async Task<T> AsyncSharedGenericCaller<T>(T value)
+        where T : class
+    {
+        T item = await Callee(value).ConfigureAwait(false);
+        return item;
     }
 }
