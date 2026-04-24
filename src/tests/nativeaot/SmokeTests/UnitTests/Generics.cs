@@ -78,6 +78,7 @@ class Generics
         TestNativeLayoutGeneration.Run();
         TestByRefLikeVTables.Run();
         TestFunctionPointerLoading.Run();
+        TestRuntimeAsyncAwaitNonRuntimeAsyncGeneric.Run();
 
         return 100;
     }
@@ -4004,6 +4005,43 @@ class Generics
             if (TestAll(ref structValue, typeof(int)) != structValue)
                 throw new Exception();
         }
+    }
+}
+
+/// <summary>
+/// Regression test for https://github.com/dotnet/runtime/issues/127179
+/// Scanner/JIT mismatch when a runtime-async method awaits a non-runtime-async Task-returning generic method.
+/// </summary>
+class TestRuntimeAsyncAwaitNonRuntimeAsyncGeneric
+{
+    // Non-runtime-async static generic Task-returning method
+    static Task<T> IdentityAsync<T>(T value) => Task.FromResult(value);
+
+    class Box<T>
+    {
+        T _value;
+        public Box(T value) { _value = value; }
+
+        // Runtime-async method on a generic class awaiting a non-runtime-async Task-returning method.
+        // The ILC scanner must not precompute a MethodDictionary slot for the async variant of IdentityAsync<T>
+        // while the JIT falls back to looking up the original, or vice versa.
+        public async Task<T> GetValueAsync()
+        {
+            return await IdentityAsync(_value).ConfigureAwait(false);
+        }
+    }
+
+    public static void Run()
+    {
+        var box1 = new Box<int>(42);
+        int result1 = box1.GetValueAsync().Result;
+        if (result1 != 42)
+            throw new Exception($"Expected 42, got {result1}");
+
+        var box2 = new Box<string>("hello");
+        string result2 = box2.GetValueAsync().Result;
+        if (result2 != "hello")
+            throw new Exception($"Expected 'hello', got '{result2}'");
     }
 }
 

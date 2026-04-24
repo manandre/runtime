@@ -6,10 +6,11 @@ using System.Threading.Tasks;
 using Xunit;
 
 // Regression test for https://github.com/dotnet/runtime/issues/127179:
-// In NativeAOT with scanner, awaiting a non-runtime-async Task-returning generic method
-// from a runtime-async generic caller caused an InvalidOperationException at compile time.
+// Awaiting a non-runtime-async Task-returning generic method from a runtime-async
+// generic caller caused an InvalidOperationException at NativeAOT compile time.
 // The scanner incorrectly used the async variant in the precomputed generic dictionary
 // while the JIT reverted to the original method, creating a mismatch.
+// This test also guards that the method.IsAsync check doesn't break non-NativeAOT scenarios.
 
 public class Runtime_127179
 {
@@ -20,7 +21,7 @@ public class Runtime_127179
         Assert.Equal("hello", AsyncSharedGenericCaller("hello").GetAwaiter().GetResult());
     }
 
-    // Non-runtime-async (state machine) generic method; JIT reverts to calling this
+    // Non-runtime-async generic method; JIT reverts to calling this
     // directly rather than going through the async variant.
     [RuntimeAsyncMethodGeneration(false)]
     [MethodImpl(MethodImplOptions.NoInlining)]
