@@ -216,9 +216,12 @@
     <Compile Include="Internal\Runtime\MethodTable.Runtime.cs" />
     <Compile Include="System\Runtime\CompilerServices\CastCache.cs" />
     <Compile Include="System\Runtime\CompilerServices\ClassConstructorRunner.cs" />
+    <Compile Include="System\Runtime\CompilerServices\AsyncHelpers.cs" />
     <Compile Include="System\Runtime\CompilerServices\InlineArrayAttribute.cs" />
+    <Compile Include="System\Runtime\CompilerServices\IntrinsicAttribute.cs" />
     <Compile Include="System\Runtime\CompilerServices\RuntimeFeature.cs" />
     <Compile Include="System\Runtime\CompilerServices\StaticClassConstructionContext.cs" />
+    <Compile Include="System\Threading\Tasks\Task.cs" />
     <Compile Include="System\Runtime\ExceptionServices\ExceptionHandling.cs" />
     <Compile Include="System\Runtime\InteropServices\InAttribute.cs" />
     <Compile Include="System\Diagnostics\DebuggerStepThroughAttribute.cs" />

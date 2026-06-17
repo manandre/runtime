@@ -9,6 +9,10 @@
     <Configurations>Debug;Release;Checked</Configurations>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <RunAnalyzers>false</RunAnalyzers>
+    <!-- Enable the runtime-async C# compiler feature so that async methods in this project
+         are compiled as runtime-async methods (MethodImplAttributes.Async), which is required
+         to exercise the scanner/JIT async-variant code paths being tested. -->
+    <Features>$(Features);runtime-async=on</Features>
   </PropertyGroup>
 
   <Target Name="GenerateReproProjectResponseFile"
